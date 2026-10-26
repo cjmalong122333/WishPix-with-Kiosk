@@ -1,0 +1,112 @@
+/* Kiosk: fullscreen landscape on the laptop. Sizes scale with the screen. */
+.k {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--splash-gradient);
+  color: var(--navy-900);
+  overflow: hidden;
+  font-size: clamp(14px, 1.3vw, 22px);
+}
+
+/* Top bar */
+.k__bar { display: flex; justify-content: space-between; align-items: center; padding: 1.4em 2.4em; }
+.k__bar-right { display: flex; gap: 0.8em; align-items: center; }
+.k__chip, .k__status {
+  background: rgba(255, 255, 255, 0.65); border-radius: 999px; padding: 0.5em 1.1em;
+  font-size: 0.85em; font-weight: 600; color: var(--navy-700); backdrop-filter: blur(6px);
+}
+.k__chip b { color: var(--brand-700); }
+.k__status i { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; background: var(--danger); margin-right: 0.3em; }
+.k__status.is-on i { background: var(--success); }
+
+/* Center stage */
+.k__stage { display: flex; align-items: center; justify-content: center; padding: 0 3em; min-height: 0; animation: k-in 0.45s ease-out; }
+@keyframes k-in { from { opacity: 0; transform: translateY(16px); } }
+
+.k h1 { font-size: 3.4em; line-height: 1.05; margin: 0 0 0.3em; font-weight: 800; letter-spacing: -0.02em; }
+.k-eyebrow { margin: 0 0 0.6em; font-size: 0.9em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--brand-700); }
+
+/* Bottom progress */
+.k__foot { padding: 1.2em 0 2em; display: flex; justify-content: center; opacity: 0; transform: translateY(20px); transition: 0.4s; }
+.k__foot.is-shown { opacity: 1; transform: none; }
+.k__foot .wp-stepper { background: var(--navy-800); padding: 1em 2em; border-radius: 999px; width: min(720px, 80vw); box-shadow: var(--shadow); }
+
+/* Simple message screens */
+.k-msg { text-align: center; max-width: 34em; display: flex; flex-direction: column; align-items: center; }
+.k-msg p { font-size: 1.4em; color: var(--navy-700); margin: 0; }
+.k-msg__art { width: 11em; margin-bottom: 1.2em; }
+.k-msg--soft h1 { color: var(--brand-700); }
+
+.k-bubble {
+  background: #fff; border-radius: 1.2em; padding: 0.6em 1.2em; margin: 0 0 0.8em;
+  font-size: 2.6em; font-weight: 800; color: var(--brand-600); box-shadow: var(--shadow);
+  font-family: 'Andika', 'Inter', sans-serif;
+}
+.k-bubble--sm { font-size: 1.6em; }
+.k-rotating { animation: k-in 0.5s ease-out; }
+
+/* Ready: steps + QR */
+.k-ready { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4em; align-items: center; width: min(1200px, 100%); }
+.k-ready__steps { list-style: none; padding: 0; margin: 1.2em 0; display: grid; gap: 0.9em; }
+.k-ready__steps li { display: flex; gap: 1em; align-items: center; background: rgba(255, 255, 255, 0.7); border-radius: 1em; padding: 0.8em 1.1em; }
+.k-ready__steps span {
+  width: 2.4em; height: 2.4em; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--navy-800); color: #fff; font-weight: 800; font-size: 1.1em;
+}
+.k-ready__steps b { display: block; font-size: 1.25em; }
+.k-ready__steps small { color: var(--muted); font-size: 0.95em; }
+.k-ready__ideas { margin: 0; color: var(--navy-700); font-size: 1.05em; }
+
+.k-ready__qr {
+  background: var(--navy-800); border-radius: 1.6em; padding: 1.6em; text-align: center; color: #fff;
+  box-shadow: 0 20px 50px rgba(11, 31, 58, 0.3); justify-self: center;
+}
+.k-ready__qr img, .k-ready__qr-wait { display: block; width: min(30vw, 46vh); aspect-ratio: 1; border-radius: 1em; background: #fff; padding: 0.6em; }
+.k-ready__qr b { display: block; margin-top: 0.7em; font-size: 1.5em; }
+
+/* Printing: paper slides out of the printer */
+.k-print { display: flex; flex-direction: column; align-items: center; height: 100%; }
+.k-print h1 { font-size: 2.6em; margin: 0 0 0.5em; }
+.k-print__machine { width: min(24em, 30vh * 1.9); display: flex; flex-direction: column; align-items: center; flex: 1; min-height: 0; }
+.k-print__machine .art-printer { width: 100%; display: block; position: relative; z-index: 2; }
+/* The paper comes out of the printer's slot into this clipped area. */
+.k-print__slot { width: 62%; flex: 1; min-height: 0; overflow: hidden; margin-top: -9%; position: relative; z-index: 1; }
+.k-print__paper { animation: k-paper 4.2s ease-in-out forwards; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
+@keyframes k-paper { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.k--printing .k__stage { padding-top: 1vh; }
+
+/* Preview: the sheet + friendly side panel */
+.k-preview { display: flex; gap: 4em; align-items: center; height: 100%; padding: 1em 0; }
+.k-preview__sheet { height: min(78vh, 100%); aspect-ratio: 1 / 1.414; box-shadow: 0 24px 60px rgba(11, 31, 58, 0.32); animation: k-drop 0.6s ease-out; }
+@keyframes k-drop { from { transform: translateY(-30px) rotate(-2deg); opacity: 0; } }
+.k-preview__side { max-width: 22em; }
+.k-preview__side .k-bubble { display: inline-block; }
+.k-btn {
+  display: block; margin: 1em 0; border: 0; border-radius: 999px; padding: 0.8em 2.4em;
+  font-size: 1.6em; font-weight: 800; color: #fff; background: var(--brand-600);
+  box-shadow: 0 10px 24px rgba(10, 132, 198, 0.4);
+}
+.k-btn:active { transform: scale(0.97); }
+.k-preview__timer { display: flex; align-items: center; gap: 0.6em; color: var(--navy-700); margin: 0; }
+.k-preview__timer svg { width: 1.8em; height: 1.8em; transform: rotate(-90deg); }
+.k-preview__timer circle { fill: none; stroke-width: 4; }
+.k-preview__timer .track { stroke: rgba(11, 31, 58, 0.15); }
+.k-preview__timer .bar { stroke: var(--navy-800); stroke-dasharray: 94.2; transition: stroke-dashoffset 1s linear; stroke-linecap: round; }
+
+/* Illustrations */
+.art { width: 100%; display: block; overflow: visible; }
+.art--float { animation: art-float 3.5s ease-in-out infinite; }
+.art--spin path:first-of-type { transform-origin: 100px 100px; animation: art-spin 2.4s linear infinite; }
+@keyframes art-float { 50% { transform: translateY(-10px); } }
+@keyframes art-spin { to { transform: rotate(360deg); } }
+.art-ring { transform-origin: 100px 100px; animation: art-ring 1.8s ease-out infinite; }
+@keyframes art-ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.6); opacity: 0; } }
+.art-blink { animation: art-blink 0.8s steps(2) infinite; }
+@keyframes art-blink { 50% { opacity: 0.2; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .k *, .k { animation: none !important; transition: none !important; }
+}
+/* Demo screenshots (?demo=...&still) */
+.k--still *, .k--still { animation: none !important; transition: none !important; }

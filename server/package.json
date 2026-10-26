@@ -1,0 +1,18 @@
+{
+  "name": "wishpix-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js --dev",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4"
+  }
+}

@@ -1,0 +1,27 @@
+.wp-stepper {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; justify-content: center; gap: 8px;
+}
+.wp-stepper li { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; flex: 1; max-width: 140px; }
+/* Line joining this step's dot to the previous one. */
+.wp-stepper li + li::before {
+  content: ''; position: absolute; top: var(--dot-half);
+  left: calc(-50% + var(--dot-half) + 2px); right: calc(50% + var(--dot-half) + 6px);
+  height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.3); transform: translateY(-50%);
+}
+.wp-stepper li.is-done::before, .wp-stepper li.is-active::before { background: rgba(255, 255, 255, 0.9); }
+
+.wp-stepper__dot {
+  width: var(--dot); height: var(--dot); border-radius: 50%;
+  display: grid; place-items: center; font-weight: 700; font-size: calc(var(--dot) * 0.42);
+  background: rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.85);
+}
+.wp-stepper__label { font-size: var(--label); font-weight: 600; color: rgba(255, 255, 255, 0.75); }
+.wp-stepper .is-active .wp-stepper__dot { background: var(--blue-accent); color: #fff; box-shadow: 0 0 0 6px rgba(29, 107, 255, 0.3); animation: wp-step-pulse 1.4s ease-in-out infinite; }
+.wp-stepper .is-active .wp-stepper__label { color: #fff; }
+.wp-stepper .is-done .wp-stepper__dot { background: var(--success); color: #fff; }
+.wp-stepper .is-done .wp-stepper__label { color: #fff; }
+@keyframes wp-step-pulse { 50% { box-shadow: 0 0 0 10px rgba(29, 107, 255, 0.15); } }
+
+.wp-stepper--md { --dot: 40px; --dot-half: 20px; --label: 15px; }
+.wp-stepper--sm { --dot: 28px; --dot-half: 14px; --label: 12px; }

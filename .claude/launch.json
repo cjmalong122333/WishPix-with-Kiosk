@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wishpix",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Users\\Admin\\CAPSTONE SIMULATOR",
+      "port": 5173
+    }
+  ]
+}

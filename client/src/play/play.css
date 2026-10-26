@@ -1,0 +1,81 @@
+/* Child phone page, styled like the Teacher App welcome screen. */
+.p {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 16px 32px;
+  background: var(--splash-gradient);
+  color: var(--navy-900);
+}
+
+.p-tagline {
+  margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--brand-700);
+}
+
+.p-card {
+  width: 100%; max-width: 420px; margin-top: 8px;
+  background: var(--navy-700); color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 18px;
+  padding: 22px 20px 24px; box-shadow: 0 12px 32px rgba(11, 31, 58, 0.25);
+  display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;
+}
+
+.p-chip {
+  background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 6px 14px;
+  font-size: 13px; font-weight: 600; color: #cfe4ff;
+}
+
+.p-langs { display: flex; background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 4px; width: 100%; }
+.p-langs button {
+  flex: 1; border: 0; border-radius: 9px; padding: 10px; font-weight: 600;
+  background: transparent; color: rgba(255, 255, 255, 0.75);
+}
+.p-langs button.is-active { background: #fff; color: var(--navy-900); }
+
+.p-mic {
+  width: 168px; height: 168px; border-radius: 50%; border: 6px solid rgba(255, 255, 255, 0.18);
+  background: var(--brand-600); color: #fff; display: grid; place-items: center;
+  box-shadow: 0 14px 36px rgba(10, 132, 198, 0.55); margin-top: 6px;
+  transition: transform 0.15s;
+}
+.p-mic:active { transform: scale(0.96); }
+.p-mic.is-listening { background: var(--danger); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.6); animation: p-pulse 1.3s ease-out infinite; }
+.p-mic:disabled { opacity: 0.45; }
+@keyframes p-pulse { to { box-shadow: 0 0 0 28px rgba(225, 29, 72, 0); } }
+
+.p-hint { margin: 0; font-weight: 600; font-size: 16px; color: #dbe8f8; min-height: 1.4em; }
+.p-hint--note { font-weight: 500; font-size: 14px; }
+
+.p-said-box { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.p-said-box span { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #9fb6d4; }
+.p-said-box textarea {
+  width: 100%; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 14px;
+  font-size: 20px; font-family: 'Andika', 'Inter', sans-serif; resize: none;
+  background: var(--navy-900); color: #fff;
+}
+.p-said-box textarea::placeholder { color: #6e86a6; }
+
+.p-btn {
+  width: 100%; border: 0; border-radius: 12px; padding: 16px; font-size: 18px; font-weight: 700;
+  color: #fff; background: var(--brand-700); box-shadow: 0 6px 18px rgba(10, 132, 198, 0.35);
+}
+.p-btn:disabled { opacity: 0.4; box-shadow: none; }
+.p-message { margin: 0; font-weight: 600; color: #ffd5dd; }
+
+.p-notice h1, .p-progress h1 { margin: 4px 0 6px; font-size: 26px; }
+.p-notice p { margin: 0; color: #cfe0f5; }
+.p-progress { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.p-eyebrow { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #9fb6d4; }
+.p-said { margin: 0 0 8px; font-family: 'Andika', sans-serif; font-size: 22px; font-weight: 700; color: #8fd0ff; }
+.p-progress .wp-stepper { width: 100%; }
+
+.p-spinner {
+  width: 44px; height: 44px; margin: 0 auto 12px; border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.2); border-top-color: #fff; animation: p-spin 1s linear infinite;
+}
+@keyframes p-spin { to { transform: rotate(360deg); } }
+
+.p .wp-logo { font-size: 24px; }
