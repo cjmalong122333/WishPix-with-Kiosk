@@ -22,6 +22,7 @@ Last updated: 2026-10-27
 - Free images: Pollinations.ai, 1 image per 45 seconds per IP; the server waits and retries.
 - Phone mic needs the Cloudflare quick tunnel; its URL changes every run and goes in
   `server/.env` as `PUBLIC_URL`.
-- Nothing is committed: this folder is inside a git repo rooted at `C:\Users\Admin`.
+- This folder has its own git repo (branch `main`). Steps 1–3 are saved in the first
+  checkpoint commit. It is local only: there is no GitHub remote.
 
 To continue, tell Claude: **"continue WishPix step 4"**.
