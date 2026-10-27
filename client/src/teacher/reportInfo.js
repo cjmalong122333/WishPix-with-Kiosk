@@ -1,0 +1,33 @@
+import { CalendarDays, ShieldCheck, Zap } from 'lucide-react'
+import { fromDay, longDate, shortDate } from './status.js'
+
+export const REPORT_TYPES = [
+  { id: 'daily', icon: CalendarDays, tone: 'blue', name: 'Daily summary', text: 'Everything that happened on one day.' },
+  { id: 'session', icon: Zap, tone: 'indigo', name: 'Session report', text: 'One session: its settings and every request.' },
+  { id: 'safety', icon: ShieldCheck, tone: 'red', name: 'Safety report', text: 'What the safety filter blocked, and what teachers decided.' },
+]
+
+// "Daily summary · Tuesday, October 27, 2026"
+export function reportTitle(type, params, t) {
+  const kind = t(REPORT_TYPES.find((r) => r.id === type)?.name ?? type)
+  if (type === 'daily') return `${kind} · ${longDate(fromDay(params.date), t)}`
+  if (type === 'session') return `${kind} · ${t('Session #{n}', { n: params.sessionId })}`
+  if (type === 'safety' && params.from && params.to) return `${kind} · ${shortDate(fromDay(params.from), t)} – ${shortDate(fromDay(params.to), t)}`
+  return kind
+}
+
+// Today (or another day) as 'YYYY-MM-DD' in the laptop's time zone.
+export function localDay(offsetDays = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// A list of rows as a CSV file the browser downloads.
+export function downloadCsv(filename, head, rows) {
+  const cell = (v) => (v == null ? '' : /[",\n\r]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
+  const text = '﻿' + [head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
+  Object.assign(document.createElement('a'), { href: url, download: filename }).click()
+  URL.revokeObjectURL(url)
+}

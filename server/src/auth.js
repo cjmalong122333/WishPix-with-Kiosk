@@ -38,4 +38,18 @@ export function requireTeacher(req, res, next) {
   next();
 }
 
+// Returns an error message, or null when the password was changed.
+export function changePassword(teacherId, current, next) {
+  const teacher = db.prepare('SELECT * FROM teachers WHERE id = ?').get(teacherId);
+  if (!bcrypt.compareSync(current, teacher.password_hash)) return 'Your current password is not correct.';
+  if (next.length < 8) return 'The new password needs at least 8 characters.';
+  db.prepare('UPDATE teachers SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(next, 10), teacherId);
+  return null;
+}
+
+export function updateDisplayName(teacherId, displayName) {
+  db.prepare('UPDATE teachers SET display_name = ? WHERE id = ?').run(displayName, teacherId);
+  return publicTeacher(db.prepare('SELECT * FROM teachers WHERE id = ?').get(teacherId));
+}
+
 const publicTeacher = (t) => ({ id: t.id, username: t.username, displayName: t.display_name });

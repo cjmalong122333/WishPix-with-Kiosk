@@ -4,21 +4,17 @@ import { Loader, Login, SystemCheck } from './Welcome.jsx'
 import Layout from './Layout.jsx'
 import Dashboard from './Dashboard.jsx'
 import SessionSetup from './SessionSetup.jsx'
-import ComingSoon from './ComingSoon.jsx'
+import Moderation from './Moderation.jsx'
+import LiveSession from './LiveSession.jsx'
+import PrintManagement from './PrintManagement.jsx'
+import KioskManagement from './KioskManagement.jsx'
+import ActivityLogs from './ActivityLogs.jsx'
+import Analytics from './Analytics.jsx'
+import Reports from './Reports.jsx'
+import ReportView from './ReportView.jsx'
+import Settings from './Settings.jsx'
 import DevPanel from './DevPanel.jsx'
 import './teacher.css'
-
-// Pages still to come, with the build step that adds them.
-const LATER = [
-  ['live', 'Live Session', 5],
-  ['moderation', 'Moderation Center', 4],
-  ['print', 'Print Management', 5],
-  ['kiosk', 'Kiosk Management', 5],
-  ['logs', 'Activity Logs', 6],
-  ['analytics', 'Analytics', 6],
-  ['reports', 'Reports', 6],
-  ['settings', 'Settings', 6],
-]
 
 export default function TeacherApp() {
   return (
@@ -31,9 +27,15 @@ export default function TeacherApp() {
         <Route element={<Layout />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="setup" element={<SessionSetup />} />
-          {LATER.map(([path, title, step]) => (
-            <Route key={path} path={path} element={<ComingSoon title={title} step={step} />} />
-          ))}
+          <Route path="live" element={<LiveSession />} />
+          <Route path="moderation" element={<Moderation />} />
+          <Route path="print" element={<PrintManagement />} />
+          <Route path="kiosk" element={<KioskManagement />} />
+          <Route path="logs" element={<ActivityLogs />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="reports/:id" element={<ReportView />} />
+          <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/teacher" replace />} />
       </Routes>

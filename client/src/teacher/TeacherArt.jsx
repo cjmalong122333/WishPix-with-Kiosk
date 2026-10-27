@@ -1,14 +1,16 @@
 import { useState } from 'react'
+import { useT } from '../i18n/index.jsx'
 
 // Uses the teacher illustration exported from Figma if it is saved as
 // client/public/teacher-illustration.png; otherwise draws a simple stand-in.
 export function TeacherArt() {
+  const t = useT()
   const [missing, setMissing] = useState(false)
   if (!missing) {
-    return <img src="/teacher-illustration.png" alt="Teacher at the kiosk" onError={() => setMissing(true)} />
+    return <img src="/teacher-illustration.png" alt={t('Teacher at the kiosk')} onError={() => setMissing(true)} />
   }
   return (
-    <svg viewBox="0 0 160 130" role="img" aria-label="Teacher at the kiosk">
+    <svg viewBox="0 0 160 130" role="img" aria-label={t('Teacher at the kiosk')}>
       <rect x="92" y="36" width="52" height="36" rx="3" fill="#cfe7ff" stroke="#1e3a5f" strokeWidth="2" />
       <rect x="98" y="42" width="18" height="12" rx="2" fill="#5fb3f4" />
       <rect x="120" y="42" width="18" height="12" rx="2" fill="#ffd36b" />

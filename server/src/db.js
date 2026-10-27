@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { seedTeachers, seedKiosk } from './seed-data.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = path.join(__dirname, '..', 'data');
+export const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
 export const IMAGE_DIR = path.join(DATA_DIR, 'images');
 fs.mkdirSync(IMAGE_DIR, { recursive: true });
 
@@ -60,10 +60,16 @@ db.exec(`
     status            TEXT NOT NULL,            -- processing | blocked | generating | success | failed
     block_category    TEXT,
     block_reason      TEXT,
+    block_match       TEXT,                     -- the word or phrase that was blocked
     moderation_status TEXT,                     -- pending | kept_blocked | overridden
+    moderated_at      TEXT,
+    moderated_by      INTEGER REFERENCES teachers(id),
     image_file        TEXT,
+    generated_at      TEXT,                     -- when the picture was ready
     sheet             TEXT,                     -- JSON: Trace & Learn overlay (letter, number, shape...)
     print_status      TEXT NOT NULL DEFAULT 'not_printed', -- not_printed | printed | failed
+    printed_at        TEXT,
+    print_error       TEXT,                     -- why the last print failed (printer.js PROBLEMS)
     reprint_count     INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
@@ -72,6 +78,15 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
+  );
+
+  -- Teacher and system actions for the Activity Logs (see events.js).
+  CREATE TABLE IF NOT EXISTS events (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    type       TEXT NOT NULL,
+    data       TEXT NOT NULL DEFAULT '{}',      -- JSON details
+    teacher_id INTEGER REFERENCES teachers(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS reports (
@@ -87,6 +102,12 @@ const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all().map((c) =
 if (!sessionColumns.includes('join_token')) db.exec('ALTER TABLE sessions ADD COLUMN join_token TEXT');
 const requestColumns = db.prepare('PRAGMA table_info(requests)').all().map((c) => c.name);
 if (!requestColumns.includes('sheet')) db.exec('ALTER TABLE requests ADD COLUMN sheet TEXT');
+if (!requestColumns.includes('moderated_at')) db.exec('ALTER TABLE requests ADD COLUMN moderated_at TEXT');
+if (!requestColumns.includes('block_match')) db.exec('ALTER TABLE requests ADD COLUMN block_match TEXT');
+if (!requestColumns.includes('generated_at')) db.exec('ALTER TABLE requests ADD COLUMN generated_at TEXT');
+if (!requestColumns.includes('printed_at')) db.exec('ALTER TABLE requests ADD COLUMN printed_at TEXT');
+if (!requestColumns.includes('print_error')) db.exec('ALTER TABLE requests ADD COLUMN print_error TEXT');
+if (!requestColumns.includes('moderated_by')) db.exec('ALTER TABLE requests ADD COLUMN moderated_by INTEGER REFERENCES teachers(id)');
 
 if (db.prepare('SELECT COUNT(*) AS n FROM teachers').get().n === 0) {
   const insert = db.prepare('INSERT INTO teachers (username, password_hash, display_name) VALUES (?, ?, ?)');
@@ -105,9 +126,17 @@ const defaultSettings = {
   auto_sleep_minutes: '15',
   auto_logout: 'true',
   auto_logout_minutes: '30',
+  kiosk_brightness: '100',
 };
 const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
 for (const [k, v] of Object.entries(defaultSettings)) insertSetting.run(k, v);
+
+const selectSetting = db.prepare('SELECT value FROM settings WHERE key = ?');
+const upsertSetting = db.prepare(
+  'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+);
+export const getSetting = (key, fallback = null) => selectSetting.get(key)?.value ?? fallback;
+export const setSetting = (key, value) => upsertSetting.run(key, String(value));
 
 export const parseSession = (row) =>
   row && {

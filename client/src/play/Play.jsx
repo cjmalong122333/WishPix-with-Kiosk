@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useLive } from '../lib/live.js'
+import { LangProvider, useT } from '../i18n/index.jsx'
 import { Logo } from '../ui/Logo.jsx'
 import { Stepper } from '../ui/Stepper.jsx'
 import './play.css'
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+// What the child speaks in (picked on this page). Separate from the screen
+// language, which the teacher sets in Settings.
 const LANGS = [
   { id: 'en', label: 'English', code: 'en-US' },
   { id: 'fil', label: 'Filipino', code: 'fil-PH' },
@@ -17,8 +20,17 @@ const BUSY_MODES = ['processing', 'generating', 'printing', 'preview']
 export default function Play() {
   const [params] = useSearchParams()
   const token = params.get('t')
-  const { state, connected, error, socket } = useLive('child', token)
-  const [chosenLang, setLang] = useState('en')
+  const live = useLive('child', token)
+  return (
+    <LangProvider lang={live.state?.language}>
+      <PlayView token={token} {...live} />
+    </LangProvider>
+  )
+}
+
+function PlayView({ token, state, connected, error, socket }) {
+  const t = useT()
+  const [chosenLang, setLang] = useState(null)
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
   const [message, setMessage] = useState(null)
@@ -27,9 +39,11 @@ export default function Play() {
 
   const canSpeak = !!Recognition && window.isSecureContext
   const mode = state?.mode
+  const theme = state?.session?.theme && t(state.session.theme)
   const languages = LANGS.filter((l) => state?.session?.languages?.includes(l.label) ?? true)
-  // Fall back to the session's first language if the chosen one isn't allowed.
-  const lang = languages.some((l) => l.id === chosenLang) ? chosenLang : (languages[0]?.id ?? 'en')
+  // Start in the screen language when the session allows it, else its first language.
+  const preferred = chosenLang ?? (t.lang === 'fil' ? 'fil' : 'en')
+  const lang = languages.some((l) => l.id === preferred) ? preferred : (languages[0]?.id ?? 'en')
 
   useEffect(() => () => recRef.current?.abort(), [])
 
@@ -41,7 +55,7 @@ export default function Play() {
     rec.interimResults = true
     rec.maxAlternatives = 1
     rec.onresult = (e) => setText(Array.from(e.results).map((r) => r[0].transcript).join(' '))
-    rec.onerror = (e) => setMessage(e.error === 'not-allowed' ? 'Please allow the microphone, then try again.' : "I didn't catch that. Try again!")
+    rec.onerror = (e) => setMessage(e.error === 'not-allowed' ? t('Please allow the microphone, then try again.') : t("I didn't catch that. Try again!"))
     rec.onend = () => {
       setListening(false)
       socket.current?.emit('child:listening', false)
@@ -58,7 +72,7 @@ export default function Play() {
         setSent(true)
         setMessage(null)
       } else {
-        setMessage(res.error)
+        setMessage(t.error(res.error))
       }
     })
   }
@@ -69,36 +83,37 @@ export default function Play() {
     setMessage(null)
   }
 
-  if (!token) return <Shell><Notice title="Scan the kiosk" text="Scan the QR code on the kiosk screen to start." /></Shell>
-  if (error) return <Shell><Notice title={/ended/.test(error) ? 'All done!' : 'Oops!'} text={error} /></Shell>
-  if (!connected || !state) return <Shell><Notice title="Connecting…" text="Finding the kiosk." spinner /></Shell>
-  if (mode === 'waiting') return <Shell><Notice title="All done!" text="The activity has ended. Thank you for playing!" /></Shell>
-  if (mode === 'paused') return <Shell><Notice title="Little break" text="Your teacher paused the activity. Please wait." /></Shell>
+  if (!token) return <Shell><Notice title={t('Scan the kiosk')} text={t('Scan the QR code on the kiosk screen to start.')} /></Shell>
+  if (error) return <Shell><Notice title={/ended/.test(error) ? t('All done!') : t('Oops!')} text={t.error(error)} /></Shell>
+  if (!connected || !state) return <Shell><Notice title={t('Connecting…')} text={t('Finding the kiosk.')} spinner /></Shell>
+  if (mode === 'waiting') return <Shell><Notice title={t('All done!')} text={t('The activity has ended. Thank you for playing!')} /></Shell>
+  if (mode === 'paused') return <Shell><Notice title={t('Little break')} text={t('Your teacher paused the activity. Please wait.')} /></Shell>
 
   if (mode === 'blocked' && sent) {
     return (
-      <Shell theme={state.session?.theme}>
-        <Notice title="Let's try another idea!" text="Tell me about something happy, like a puppy or a rainbow." />
-        <button className="p-btn" onClick={again}>Try again</button>
+      <Shell theme={theme}>
+        <Notice title={t("Let's try another idea!")} text={t('Tell me about something happy, like a puppy or a rainbow.')} />
+        <button className="p-btn" onClick={again}>{t('Try again')}</button>
       </Shell>
     )
   }
 
   if (mode === 'error' && sent) {
     return (
-      <Shell theme={state.session?.theme}>
-        <Notice title="Oops!" text="The picture got stuck. Let's try again." />
-        <button className="p-btn" onClick={again}>Try again</button>
+      <Shell theme={theme}>
+        <Notice title={t('Oops!')} text={t("The picture got stuck. Let's try again.")} />
+        <button className="p-btn" onClick={again}>{t('Try again')}</button>
       </Shell>
     )
   }
 
   if (BUSY_MODES.includes(mode)) {
+    const title = mode === 'preview' ? (sent ? t('Your picture is ready!') : t('Almost your turn!')) : sent ? t('Look at the kiosk!') : t('Someone is making a picture')
     return (
-      <Shell theme={state.session?.theme}>
+      <Shell theme={theme}>
         <div className="p-progress">
-          <p className="p-eyebrow">{sent ? 'Your picture' : 'Please wait'}</p>
-          <h1>{mode === 'preview' ? (sent ? 'Your picture is ready!' : 'Almost your turn!') : sent ? 'Look at the kiosk!' : 'Someone is making a picture'}</h1>
+          <p className="p-eyebrow">{sent ? t('Your picture') : t('Please wait')}</p>
+          <h1>{title}</h1>
           {sent && state.current?.recognizedText && <p className="p-said">“{state.current.recognizedText}”</p>}
           <Stepper mode={mode} size="sm" />
         </div>
@@ -108,9 +123,9 @@ export default function Play() {
 
   if (sent && mode === 'ready') {
     return (
-      <Shell theme={state.session?.theme}>
-        <Notice title="That was fun!" text="Want to make another picture?" />
-        <button className="p-btn" onClick={again}>Make another</button>
+      <Shell theme={theme}>
+        <Notice title={t('That was fun!')} text={t('Want to make another picture?')} />
+        <button className="p-btn" onClick={again}>{t('Make another')}</button>
       </Shell>
     )
   }
@@ -118,12 +133,12 @@ export default function Play() {
   // ready / listening: the main talk screen
   const kioskBusy = mode === 'listening' && !listening
   return (
-    <Shell theme={state.session?.theme}>
+    <Shell theme={theme}>
       {languages.length > 1 && (
-        <div className="p-langs" role="radiogroup" aria-label="Language">
+        <div className="p-langs" role="radiogroup" aria-label={t('Language I will speak')}>
           {languages.map((l) => (
             <button key={l.id} role="radio" aria-checked={l.id === lang} className={l.id === lang ? 'is-active' : ''} onClick={() => setLang(l.id)} disabled={listening}>
-              {l.label}
+              {t(l.label)}
             </button>
           ))}
         </div>
@@ -135,25 +150,25 @@ export default function Play() {
             className={`p-mic ${listening ? 'is-listening' : ''}`}
             onClick={listening ? () => recRef.current?.stop() : startListening}
             disabled={kioskBusy}
-            aria-label={listening ? 'Stop' : 'Tap to talk'}
+            aria-label={listening ? t('Stop') : t('Tap to talk')}
           >
             {listening ? <StopIcon /> : <MicIcon />}
           </button>
           <p className="p-hint">
-            {listening ? (lang === 'fil' ? 'Nakikinig ako…' : "I'm listening…") : kioskBusy ? 'Someone else is talking…' : lang === 'fil' ? 'Pindutin at magsalita' : 'Tap and say what you want to see'}
+            {listening ? t("I'm listening…") : kioskBusy ? t('Someone else is talking…') : t('Tap and say what you want to see')}
           </p>
         </>
       ) : (
-        <p className="p-hint p-hint--note">Voice needs the secure (https) link. You can type instead.</p>
+        <p className="p-hint p-hint--note">{t('Voice needs the secure (https) link. You can type instead.')}</p>
       )}
 
       <label className="p-said-box">
-        <span>{text ? 'I heard' : 'Or type it here'}</span>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={lang === 'fil' ? 'hal. masayang pusa' : 'e.g. a happy cat'} rows={2} maxLength={200} />
+        <span>{text ? t('I heard') : t('Or type it here')}</span>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={lang === 'en' ? 'e.g. a happy cat' : 'hal. masayang pusa'} rows={2} maxLength={200} />
       </label>
 
       <button className="p-btn" onClick={send} disabled={!text.trim() || listening || kioskBusy}>
-        Send to kiosk
+        {t('Send to kiosk')}
       </button>
       {message && <p className="p-message" role="alert">{message}</p>}
     </Shell>
@@ -161,12 +176,13 @@ export default function Play() {
 }
 
 function Shell({ theme, children }) {
+  const t = useT()
   return (
     <div className="p">
-      <p className="p-tagline">Small voices. Big imagination.</p>
+      <p className="p-tagline">{t('Small voices. Big imagination.')}</p>
       <Logo size={34} />
       <main className="p-card">
-        {theme && <span className="p-chip">Today: {theme}</span>}
+        {theme && <span className="p-chip">{t('Today:')} {theme}</span>}
         {children}
       </main>
     </div>

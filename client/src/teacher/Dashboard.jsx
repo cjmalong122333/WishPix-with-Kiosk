@@ -1,21 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BarChart3, ChevronRight, Layers, MonitorSmartphone, Pause, Play, Printer, RotateCw, Sparkles, Square } from 'lucide-react'
+import { useT } from '../i18n/index.jsx'
 import { useAuth } from './auth.jsx'
-import { activityName } from './labels.js'
-
-// Kiosk modes from the server, shown as the five status chips in Figma.
-function kioskStatus(state) {
-  if (!state?.kioskOnline) return { chip: 'offline', title: 'KIOSK OFFLINE', text: 'Open the kiosk screen on the laptop to connect it.' }
-  switch (state.mode) {
-    case 'waiting': return { chip: 'online', title: 'WAITING FOR TEACHER', text: 'No activity is running. Choose what the children will do next.' }
-    case 'ready': return { chip: 'online', title: 'READY FOR CHILDREN', text: 'The QR code is on the kiosk. Children can scan and start.' }
-    case 'paused': return { chip: 'sleeping', title: 'SESSION PAUSED', text: 'Picture making is stopped. Resume when the children are ready.' }
-    case 'printing':
-    case 'preview': return { chip: 'printing', title: 'PRINTING', text: 'A picture is being printed for a child.' }
-    default: return { chip: 'busy', title: 'MAKING A PICTURE', text: 'A child is using the kiosk right now.' }
-  }
-}
+import { activityName, PROBLEM_NAMES, themeName } from './labels.js'
+import { kioskStatus } from './status.js'
+import Stat from './Stat.jsx'
 
 const CHIPS = [
   { id: 'online', label: 'Online' },
@@ -25,19 +15,20 @@ const CHIPS = [
   { id: 'printing', label: 'Printing' },
 ]
 
-function greeting() {
+function greeting(t) {
   const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+  return h < 12 ? t('Good morning') : h < 18 ? t('Good afternoon') : t('Good evening')
 }
 
 export default function Dashboard() {
   const { teacher, call, live } = useAuth()
+  const t = useT()
   const navigate = useNavigate()
   const [summary, setSummary] = useState(null)
   const [notice, setNotice] = useState(null)
   const state = live.state
   const session = state?.session
-  const status = kioskStatus(state)
+  const status = kioskStatus(state, t)
 
   const refresh = useCallback(() => call('/api/dashboard').then(setSummary).catch(() => {}), [call])
   // Load on open, and again whenever a picture finishes or a session changes.
@@ -48,74 +39,99 @@ export default function Dashboard() {
       await call(path, { method: 'POST' })
       setNotice(message)
     } catch (err) {
-      setNotice(err.message)
+      setNotice(t.error(err.message))
     }
   }
 
+  const picturesToday = summary?.generatedToday ?? 0
   return (
     <div className="t-dash">
-      <h1 className="t-h1">{greeting()}, {teacher?.displayName}</h1>
-      <p className="t-lead">Here's what's happening at your kiosk today.</p>
+      <h1 className="t-h1">{greeting(t)}, {teacher?.displayName}</h1>
+      <p className="t-lead">{t("Here's what's happening at your kiosk today.")}</p>
 
       <section className="t-hero">
         <div className="t-hero__top">
-          <span className="t-hero__eyebrow"><MonitorSmartphone size={18} /> Kiosk status • {state?.kioskName ?? 'Kiosk'}</span>
-          <span className={`t-pill ${state?.kioskOnline ? 'is-on' : 'is-off'}`}><i />{state?.kioskOnline ? 'Online' : 'Offline'}</span>
+          <span className="t-hero__eyebrow"><MonitorSmartphone size={18} /> {t('Kiosk status')} • {state?.kioskName ?? t('Kiosk')}</span>
+          <span className={`t-pill ${state?.kioskOnline ? 'is-on' : 'is-off'}`}><i />{state?.kioskOnline ? t('Online') : t('Offline')}</span>
         </div>
         <h2>{status.title}</h2>
-        <p>{session && state?.mode !== 'waiting' ? `${activityName(session)} · ${session.theme}. ` : ''}{status.text}</p>
+        <p>{session && state?.mode !== 'waiting' ? `${activityName(session, t)} · ${themeName(session.theme, t)}. ` : ''}{status.text}</p>
         <div className="t-hero__chips">
           {CHIPS.map((c) => (
-            <span key={c.id} className={`t-chip t-chip--${c.id} ${status.chip === c.id ? 'is-active' : ''}`}><i />{c.label}</span>
+            <span key={c.id} className={`t-chip t-chip--${c.id} ${status.chip === c.id ? 'is-active' : ''}`}><i />{t(c.label)}</span>
           ))}
         </div>
       </section>
 
+      {state?.printer?.problem && (
+        <div className="t-next t-next--warn">
+          <span><Printer size={16} /> {t('Printer: {problem}.', { problem: t(PROBLEM_NAMES[state.printer.problem]) })}</span>
+          <Link to="/teacher/print">{t('Fix it')} →</Link>
+        </div>
+      )}
+
       <div className="t-section-head">
-        <h3>Today's summary</h3>
-        <button className="t-link" onClick={refresh}>Refresh</button>
+        <h3>{t("Today's summary")}</h3>
+        <button className="t-link" onClick={refresh}>{t('Refresh')}</button>
       </div>
       <div className="t-stats">
-        <Stat label="Total Activities" value={summary?.sessionsToday ?? '–'} note="Sessions run today" icon={<Layers size={18} />} tone="blue" />
-        <Stat label="Total Prints" value={summary?.printsToday ?? '–'} note={`${summary?.generatedToday ?? 0} pictures generated`} icon={<Printer size={18} />} tone="purple" />
-        <Stat label="Active Session" value={session ? session.theme : 'None'} note={session ? activityName(session) : 'Start one below'} icon={<Play size={18} />} tone="indigo" small={!!session} />
-        <Stat label="Most Used Theme" value={summary?.topTheme?.theme ?? 'None yet'} note={summary?.topTheme ? `${summary.topTheme.count} pictures today` : 'No pictures today'} icon={<BarChart3 size={18} />} tone="green" small />
+        <Stat label={t('Total Activities')} value={summary?.sessionsToday} note={t('Sessions run today')} icon={<Layers size={18} />} tone="blue" />
+        <Stat
+          label={t('Total Prints')}
+          value={summary?.printsToday}
+          note={t(picturesToday === 1 ? '1 picture generated' : '{n} pictures generated', { n: picturesToday })}
+          icon={<Printer size={18} />}
+          tone="purple"
+        />
+        <Stat
+          label={t('Active Session')}
+          value={session ? themeName(session.theme, t) : t('None')}
+          note={session ? activityName(session, t) : t('Start one below')}
+          icon={<Play size={18} />}
+          tone="indigo"
+          small={!!session}
+        />
+        <Stat
+          label={t('Most Used Theme')}
+          value={summary?.topTheme ? themeName(summary.topTheme.theme, t) : t('None yet')}
+          note={summary?.topTheme ? t(summary.topTheme.count === 1 ? '1 picture today' : '{n} pictures today', { n: summary.topTheme.count }) : t('No pictures today')}
+          icon={<BarChart3 size={18} />}
+          tone="green"
+          small
+        />
       </div>
 
       <div className="t-section-head t-section-head--stack">
-        <h3>Quick actions</h3>
-        <p>Control the current session.</p>
+        <h3>{t('Quick actions')}</h3>
+        <p>{t('Control the current session.')}</p>
       </div>
       <button className="t-action-main" onClick={() => navigate('/teacher/setup')}>
         <span className="t-action-main__icon"><Play size={22} fill="currentColor" /></span>
-        <span><b>{session ? 'Start New Session' : 'Start Session'}</b><small>Set up activity, theme and safety</small></span>
+        <span><b>{session ? t('Start New Session') : t('Start Session')}</b><small>{t('Set up activity, theme and safety')}</small></span>
         <ChevronRight size={20} />
       </button>
       <div className="t-actions">
         {session?.status === 'paused' ? (
-          <Action icon={<Play size={18} />} tone="green" title="Resume Session" text="Let children make pictures again" onClick={() => act('/api/sessions/current/resume', 'Session resumed.')} />
+          <Action icon={<Play size={18} />} tone="green" title={t('Resume Session')} text={t('Let children make pictures again')} onClick={() => act('/api/sessions/current/resume', t('Session resumed.'))} />
         ) : (
-          <Action icon={<Pause size={18} />} tone="gray" title="Pause Session" text="Temporarily stop generation" disabled={!session} onClick={() => act('/api/sessions/current/pause', 'Session paused.')} />
+          <Action icon={<Pause size={18} />} tone="gray" title={t('Pause Session')} text={t('Temporarily stop generation')} disabled={!session} onClick={() => act('/api/sessions/current/pause', t('Session paused.'))} />
         )}
-        <Action icon={<Square size={16} fill="currentColor" />} tone="red" title="End Session" text="Save logs and sync analytics" disabled={!session} onClick={() => { if (window.confirm('End the current session? Children will need a new QR code.')) act('/api/sessions/current/end', 'Session ended and saved.') }} />
-        <Action icon={<RotateCw size={18} />} tone="amber" title="Restart Kiosk" text="Reboot the kiosk hardware" disabled={!state?.kioskOnline} onClick={() => act('/api/kiosk/restart', 'Kiosk is restarting…')} />
+        <Action
+          icon={<Square size={16} fill="currentColor" />}
+          tone="red"
+          title={t('End Session')}
+          text={t('Save logs and sync analytics')}
+          disabled={!session}
+          onClick={() => { if (window.confirm(t('End the current session? Children will need a new QR code.'))) act('/api/sessions/current/end', t('Session ended and saved.')) }}
+        />
+        <Action icon={<RotateCw size={18} />} tone="amber" title={t('Restart Kiosk')} text={t('Reboot the kiosk hardware')} disabled={!state?.kioskOnline} onClick={() => act('/api/kiosk/restart', t('Kiosk is restarting…'))} />
       </div>
       {notice && <p className="t-toast" role="status" onAnimationEnd={() => setNotice(null)}>{notice}</p>}
 
       <div className="t-next">
-        <span><Sparkles size={16} /> Next: {session ? 'watch the children in Live Session.' : 'decide which activity to run.'}</span>
-        <Link to={session ? '/teacher/live' : '/teacher/setup'}>{session ? 'Live session' : 'Plan activity'} →</Link>
+        <span><Sparkles size={16} /> {session ? t('Next: watch the children in Live Session.') : t('Next: decide which activity to run.')}</span>
+        <Link to={session ? '/teacher/live' : '/teacher/setup'}>{session ? t('Live session') : t('Plan activity')} →</Link>
       </div>
-    </div>
-  )
-}
-
-function Stat({ label, value, note, icon, tone, small }) {
-  return (
-    <div className="t-stat">
-      <div className="t-stat__head"><span>{label}</span><i className={`t-tint t-tint--${tone}`}>{icon}</i></div>
-      <b className={small ? 't-stat__value--sm' : ''}>{value}</b>
-      <small>{note}</small>
     </div>
   )
 }

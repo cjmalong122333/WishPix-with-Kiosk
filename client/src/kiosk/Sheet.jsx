@@ -1,23 +1,25 @@
+import { useT } from '../i18n/index.jsx'
 import './sheet.css'
 
 // The "printed" page shown in the print preview. Layout depends on the
 // activity; Trace & Learn sheets draw their dotted letters, numbers, shapes
 // and lines here, on top of the AI picture.
 export function Sheet({ current, session, compact }) {
+  const t = useT()
   const sheet = current?.sheet
   const type = session?.activity_type
-  const date = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const date = new Date().toLocaleDateString(t.locale, { month: 'short', day: 'numeric', year: 'numeric' })
 
   return (
     <div className="sheet-wrap">
     <article className={`sheet sheet--${type} ${compact ? 'sheet--compact' : ''}`}>
       <header className="sheet__head">
         <span>WishPix</span>
-        <span>{session?.theme} · {date}</span>
+        <span>{session?.theme ? t(session.theme) : ''} · {date}</span>
       </header>
 
-      {type === 'color_create' && <h2 className="sheet__title">Color me!</h2>}
-      {type === 'trace_learn' && <h2 className="sheet__title">{traceTitle(sheet)}</h2>}
+      {type === 'color_create' && <h2 className="sheet__title">{t('Color me!')}</h2>}
+      {type === 'trace_learn' && <h2 className="sheet__title">{traceTitle(sheet, t)}</h2>}
 
       <div className="sheet__body">
         {type === 'trace_learn' && sheet ? (
@@ -30,21 +32,21 @@ export function Sheet({ current, session, compact }) {
       {type === 'free_play' && <p className="sheet__caption">{current?.recognizedText}</p>}
 
       <footer className="sheet__name">
-        <span>Name:</span><i />
+        <span>{t('Name:')}</span><i />
       </footer>
     </article>
     </div>
   )
 }
 
-function traceTitle(sheet) {
+function traceTitle(sheet, t) {
   switch (sheet?.kind) {
-    case 'letter': return `${sheet.letter} is for ${sheet.word}`
-    case 'number': return 'Count and trace'
-    case 'shape': return `Trace the ${sheet.shape}s`
-    case 'prewriting': return 'Follow the dotted line'
-    case 'word': return 'Trace the word'
-    default: return 'Trace & Learn'
+    case 'letter': return t('{letter} is for {word}', { letter: sheet.letter, word: sheet.word })
+    case 'number': return t('Count and trace')
+    case 'shape': return t('Trace the {shape}s', { shape: t(sheet.shape) })
+    case 'prewriting': return t('Follow the dotted line')
+    case 'word': return t('Trace the word')
+    default: return t('Trace & Learn')
   }
 }
 

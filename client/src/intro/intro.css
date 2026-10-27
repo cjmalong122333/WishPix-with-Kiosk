@@ -1,0 +1,25 @@
+/* Intro animation: the canvas renders at a fixed size and is scaled to fit. */
+.intro {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: #2c2866; overflow: hidden;
+}
+/* Transparent-background preview: a soft checkerboard shows what is see-through. */
+.intro--clear { background: repeating-conic-gradient(#ece6f7 0 25%, #fff 0 50%) 0 0 / 32px 32px; }
+.intro--clear .intro__group, .intro--clear .intro__btn:not(.intro__btn--main) { background: rgba(44, 40, 102, 0.75); }
+.intro__stage { width: min(100vw, calc(100vh * var(--ar))); aspect-ratio: var(--ar); }
+.intro__stage canvas { display: block; width: 100%; height: 100%; }
+
+.intro__bar {
+  position: fixed; top: 16px; right: 16px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+  transition: opacity 0.4s ease;
+}
+.intro__bar.is-idle { opacity: 0; pointer-events: none; }
+.intro__group { display: flex; background: rgba(255, 255, 255, 0.18); border-radius: 999px; padding: 3px; backdrop-filter: blur(8px); }
+.intro__group button, .intro__btn {
+  border: 0; border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600;
+  color: #fff; background: transparent;
+}
+.intro__group button.is-on { background: #fff; color: var(--navy-900); }
+.intro__btn { display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); }
+.intro__btn--main { background: #fff; color: var(--navy-900); }
+.intro button:disabled { opacity: 0.6; cursor: default; }

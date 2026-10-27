@@ -16,7 +16,7 @@ Then open on the laptop:
 | Page | URL |
 |---|---|
 | Kiosk screen | http://localhost:5173/kiosk |
-| Teacher (dev panel for now) | http://localhost:5173/teacher |
+| Teacher App | http://localhost:5173/teacher |
 | Child page | scan the QR code on the kiosk |
 
 The test teacher account is in `server/src/seed-data.js`.
@@ -36,3 +36,11 @@ PUBLIC_URL=https://<your-tunnel>.trycloudflare.com
 - The free image service allows one picture every 45 seconds; the server waits and retries.
 - Data is stored in `server/data/` (SQLite database and generated images).
 - Set `LAN_IP` in `server/.env` if the QR code shows the wrong Wi-Fi address.
+- The Teacher App, kiosk and child page can switch between English and Filipino (Settings).
+
+## Checks
+
+```bash
+npm test --prefix server              # safety filter tests
+npm run i18n:check --prefix client    # every English text has a Filipino translation
+```

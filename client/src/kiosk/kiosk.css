@@ -110,3 +110,20 @@
 }
 /* Demo screenshots (?demo=...&still) */
 .k--still *, .k--still { animation: none !important; transition: none !important; }
+
+/* Printer problem on the preview screen */
+.k-preview__problem { margin: 0 0 1.2em; padding: 0.8em 1em; border-radius: 0.8em; background: rgba(255, 247, 224, 0.9); color: #92400e; font-weight: 600; }
+
+/* Sleeping screen: covers everything; any touch wakes the kiosk. */
+.k-sleep {
+  position: fixed; inset: 0; z-index: 50; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.4em;
+  background: radial-gradient(circle at 50% 40%, #1e3a5f, #0b1f3a 70%); color: #cfe0f5; font-size: 1.5em; cursor: pointer;
+  animation: k-sleep-in 1.2s ease-out;
+}
+.k-sleep__art { width: 7em; opacity: 0.8; }
+.k-sleep b { font-weight: 600; opacity: 0.75; animation: k-sleep-pulse 3s ease-in-out infinite; }
+@keyframes k-sleep-in { from { opacity: 0; } }
+@keyframes k-sleep-pulse { 50% { opacity: 0.35; } }
+
+/* Shown until the screen is touched once; browsers block sound before that. */
+.k__chip--sound { background: rgba(255, 247, 224, 0.85); color: #92400e; }
