@@ -13,7 +13,7 @@ Teacher App on a phone, tablet or laptop on the same Wi-Fi.
 | `apps/web` | Kiosk screen, Teacher App and API | Next.js 16 + TypeScript, Tailwind CSS + shadcn/ui, Zustand, i18next, Socket.IO, SQLite + Prisma, bcrypt + JWT |
 | `services/hardware` | Page layout and printing | Python 3.11+, FastAPI + Uvicorn, Pillow + OpenCV, CUPS (`lp`/`lpstat`) |
 | `deploy/` | Raspberry Pi setup, systemd services, Chromium kiosk mode, ALSA, nginx | Bash, systemd |
-| `docs/` | [Architecture](docs/architecture.md), [Deployment on the Raspberry Pi](docs/deployment.md) | |
+| `docs/` | [Going live: real AI and hardware](docs/going-live.md), [Deployment on the Raspberry Pi](docs/deployment.md), [Architecture](docs/architecture.md) | |
 
 AI services (each is optional and has a free fallback):
 
@@ -41,6 +41,9 @@ npm run dev
 
 The printer runs in practice mode: pages are saved as PNG files in
 `services/hardware/data/pages/`, and Print Management can simulate jams and empty trays.
+
+When the AI accounts and the hardware arrive, follow [docs/going-live.md](docs/going-live.md):
+it lists every setting to change, with no code changes needed.
 
 With Docker instead: `docker compose up --build`.
 

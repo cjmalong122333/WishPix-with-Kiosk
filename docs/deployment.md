@@ -1,5 +1,8 @@
 # Deploying WishPix on the kiosk
 
+For a summary of every setting that changes from practice mode to the real kiosk (AI
+keys, printer, security), see [going-live.md](going-live.md).
+
 ## Hardware
 
 - Raspberry Pi 4 Model B (4 GB or 8 GB) with the official 5.1 V 3 A power supply
