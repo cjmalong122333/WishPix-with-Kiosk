@@ -1,0 +1,3 @@
+# Raspberry Pi OS (Bookworm, Wayland/labwc) desktop autostart for the kiosk user.
+# Installed by setup-pi.sh to ~/.config/labwc/autostart
+/opt/wishpix/deploy/kiosk/chromium-kiosk.sh &

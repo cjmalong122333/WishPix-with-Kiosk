@@ -2,11 +2,38 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "wishpix",
+      "name": "wishpix-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "cwd": "C:\\Users\\Admin\\CAPSTONE SIMULATOR",
-      "port": 5173
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "C:\\Users\\Admin\\CAPSTONE SIMULATOR\\apps\\web",
+      "port": 3000
+    },
+    {
+      "name": "wishpix-hardware",
+      "runtimeExecutable": "C:\\Users\\Admin\\CAPSTONE SIMULATOR\\services\\hardware\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--port",
+        "8765"
+      ],
+      "cwd": "C:\\Users\\Admin\\CAPSTONE SIMULATOR\\services\\hardware",
+      "port": 8765
+    },
+    {
+      "name": "wishpix-web-prod",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "dist/server.js",
+        "--port",
+        "3100"
+      ],
+      "cwd": "C:\\Users\\Admin\\CAPSTONE SIMULATOR\\apps\\web",
+      "port": 3100
     }
   ]
 }

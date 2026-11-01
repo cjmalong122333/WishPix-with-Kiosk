@@ -1,0 +1,37 @@
+# Runs WishPix on any computer with Docker, with a simulated printer:
+#   docker compose up --build
+# Then open http://localhost:3000/kiosk and http://localhost:3000/teacher
+# (first teacher: teacher / wishpix123 unless ADMIN_* are set in apps/web/.env).
+services:
+  hardware:
+    build: ./services/hardware
+    environment:
+      PRINTER_MODE: mock
+      HARDWARE_TOKEN: ${HARDWARE_TOKEN:-docker-dev-token}
+    volumes:
+      - hardware-data:/app/data
+
+  web:
+    build: ./apps/web
+    depends_on: [hardware]
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: ./apps/web/.env
+        required: false
+    environment:
+      HARDWARE_URL: http://hardware:8765
+      HARDWARE_TOKEN: ${HARDWARE_TOKEN:-docker-dev-token}
+      JWT_SECRET: ${JWT_SECRET:-docker-dev-secret-change-me}
+      # Inside Docker the browser is never "local", so allow the kiosk screen
+      # from this computer. Never set this on a real kiosk.
+      KIOSK_ALLOW_REMOTE: "true"
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-teacher}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-wishpix123}
+    volumes:
+      - web-data:/app/data
+    command: ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node node_modules/.bin/tsx prisma/seed.ts; node dist/server.js"]
+
+volumes:
+  hardware-data:
+  web-data:

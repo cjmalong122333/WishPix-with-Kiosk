@@ -1,0 +1,27 @@
+[Unit]
+Description=WishPix web app (kiosk screen, Teacher App, API)
+After=network-online.target wishpix-hardware.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wishpix
+Group=wishpix
+WorkingDirectory=/opt/wishpix/apps/web
+EnvironmentFile=/opt/wishpix/apps/web/.env
+Environment=NODE_ENV=production
+Environment=TZ=Asia/Manila
+Environment=CHECKPOINT_DISABLE=1
+ExecStartPre=/opt/wishpix/apps/web/node_modules/.bin/prisma migrate deploy
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=3
+# Hardening: the app only writes to its data folder.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/wishpix/apps/web/data /opt/wishpix/apps/web/.next
+
+[Install]
+WantedBy=multi-user.target

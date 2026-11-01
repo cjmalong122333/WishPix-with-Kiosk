@@ -1,4 +1,6 @@
 node_modules/
 dist/
-server/data/
 .env
+.DS_Store
+# Old simulator database, pictures and settings (import with npm run db:import-legacy)
+legacy/

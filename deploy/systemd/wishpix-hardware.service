@@ -1,0 +1,24 @@
+[Unit]
+Description=WishPix hardware service (page layout and printing through CUPS)
+After=network.target cups.service
+Wants=cups.service
+
+[Service]
+Type=simple
+User=wishpix
+Group=wishpix
+# lpadmin lets the service resume a stopped printer (cupsenable) after a jam.
+SupplementaryGroups=lpadmin lp
+WorkingDirectory=/opt/wishpix/services/hardware
+EnvironmentFile=/opt/wishpix/services/hardware/.env
+ExecStart=/opt/wishpix/services/hardware/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8765
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/wishpix/services/hardware/data
+
+[Install]
+WantedBy=multi-user.target

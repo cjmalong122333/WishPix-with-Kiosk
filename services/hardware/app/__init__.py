@@ -1,0 +1,1 @@
+"""WishPix hardware service."""

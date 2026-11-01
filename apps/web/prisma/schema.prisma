@@ -1,0 +1,126 @@
+// WishPix database (SQLite). Column names stay snake_case so reports can use
+// plain SQL and the simulator's old database can be imported as-is.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Teacher {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  displayName  String    @map("display_name")
+  tokenVersion Int       @default(0) @map("token_version") // raised on password change: older sign-ins stop working
+  createdAt    DateTime  @default(now()) @map("created_at")
+  sessions     Session[]
+  moderated    Request[] @relation("moderatedBy")
+  events       Event[]
+
+  @@map("teachers")
+}
+
+model Kiosk {
+  id       Int       @id @default(autoincrement())
+  name     String
+  firmware String
+  lastSeen DateTime? @map("last_seen")
+  sessions Session[]
+
+  @@map("kiosks")
+}
+
+// One row per activity session started by a teacher.
+model Session {
+  id              Int       @id @default(autoincrement())
+  kioskId         Int       @map("kiosk_id")
+  teacherId       Int       @map("teacher_id")
+  activityType    String    @map("activity_type") // color_create | trace_learn | free_play
+  activitySubtype String    @map("activity_subtype")
+  theme           String
+  safetyLevel     String    @map("safety_level") // strict | standard | custom
+  languages       String // JSON array
+  blockedWords    String    @default("[]") @map("blocked_words") // JSON array
+  allowedWords    String    @default("[]") @map("allowed_words") // JSON array
+  status          String // active | paused | ended
+  startedAt       DateTime  @default(now()) @map("started_at")
+  endedAt         DateTime? @map("ended_at")
+  kiosk           Kiosk     @relation(fields: [kioskId], references: [id])
+  teacher         Teacher   @relation(fields: [teacherId], references: [id])
+  requests        Request[]
+
+  @@index([status])
+  @@map("sessions")
+}
+
+// One row per child request. No child names and no audio are ever stored.
+model Request {
+  id               Int       @id @default(autoincrement())
+  sessionId        Int       @map("session_id")
+  queueNumber      Int       @map("queue_number")
+  originalSpeech   String    @map("original_speech")
+  recognizedText   String    @map("recognized_text")
+  language         String?
+  finalPrompt      String?   @map("final_prompt")
+  status           String // processing | blocked | generating | success | failed
+  blockCategory    String?   @map("block_category")
+  blockReason      String?   @map("block_reason")
+  blockMatch       String?   @map("block_match") // the word or phrase that was blocked
+  blockSource      String?   @map("block_source") // filter | ai
+  moderationStatus String?   @map("moderation_status") // pending | kept_blocked | overridden
+  moderatedAt      DateTime? @map("moderated_at")
+  moderatedBy      Int?      @map("moderated_by")
+  labelEn          String?   @map("label_en") // short bilingual label for the printed sheet
+  labelFil         String?   @map("label_fil")
+  imageFile        String?   @map("image_file")
+  imageProvider    String?   @map("image_provider") // gemini | pollinations
+  generatedAt      DateTime? @map("generated_at")
+  sheet            String? // JSON: Trace & Learn overlay (letter, number, shape...)
+  printStatus      String    @default("not_printed") @map("print_status") // not_printed | printed | failed
+  printedAt        DateTime? @map("printed_at")
+  printError       String?   @map("print_error")
+  reprintCount     Int       @default(0) @map("reprint_count")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  session          Session   @relation(fields: [sessionId], references: [id])
+  moderator        Teacher?  @relation("moderatedBy", fields: [moderatedBy], references: [id])
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([moderationStatus])
+  @@map("requests")
+}
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("settings")
+}
+
+// Teacher and system actions for the Activity Logs (src/server/events.ts).
+model Event {
+  id        Int      @id @default(autoincrement())
+  type      String
+  data      String   @default("{}") // JSON details
+  teacherId Int?     @map("teacher_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@index([createdAt])
+  @@map("events")
+}
+
+model Report {
+  id        Int      @id @default(autoincrement())
+  type      String
+  data      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reports")
+}

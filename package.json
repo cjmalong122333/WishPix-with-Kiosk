@@ -1,15 +1,16 @@
 {
   "name": "wishpix",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "WishPix: voice-to-picture kiosk for daycares (capstone simulator)",
+  "description": "WishPix: AI-powered voice-activated learning and sticker printing kiosk for early childhood education centers",
   "scripts": {
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
-    "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "build": "npm run build --prefix client",
-    "start": "npm start --prefix server"
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --prefix apps/web",
+    "test": "node scripts/test.mjs",
+    "lint": "npm run lint --prefix apps/web && npm run typecheck --prefix apps/web"
   },
-  "devDependencies": {
-    "concurrently": "^9.2.5"
+  "engines": {
+    "node": ">=20.9"
   }
 }
