@@ -1,0 +1,202 @@
+/* Pixi's thought bubble. Moved every frame by thought-bubble.tsx (transform
+   only), so it stays cheap on the Raspberry Pi. */
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--font-round), 'Nunito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  font-size: clamp(20px, 1.9vw, 38px);
+  font-weight: 600;
+  line-height: 1.15;
+  color: #3f368f; /* Pixi's eye color: soft indigo, easy to read on white */
+}
+/* Hidden until Pixi has said where its head is. */
+.layer:not([data-placed]) {
+  visibility: hidden;
+}
+.layer:not([data-placed]) * {
+  animation-play-state: paused !important;
+}
+
+.pos {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+.body {
+  max-width: min(11em, calc(100% - 12px));
+}
+
+/* Leaving: everything fades and shrinks, the bubble first, then the circles
+   from the top down. Coming back it snaps in and the pop animation plays. */
+.fade {
+  transform-origin: var(--tail-x, 50%) var(--tail-y, 50%);
+}
+.layer[data-out] .fade {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.24s ease-in,
+    transform 0.26s ease-in;
+  transition-delay: calc(var(--out, 0) * 50ms);
+}
+
+/* Coming in: the circles pop up one after another from Pixi's head, then the
+   bubble pops with a small bounce. */
+.circle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--s);
+  height: var(--s);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  background: #fff;
+  border: 0.09em solid #5cc8ff;
+  border-radius: 47% 53% 52% 48% / 52% 46% 54% 48%;
+  box-shadow:
+    0 0 0 0.1em rgba(255, 255, 255, 0.55),
+    0 0 0.45em 0.12em rgba(255, 255, 255, 0.65);
+  animation: circle-in 0.2s cubic-bezier(0.3, 1.6, 0.6, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+.pop {
+  transform-origin: var(--tail-x) var(--tail-y);
+  animation: bubble-in 0.3s ease-out 0.16s both;
+}
+@keyframes circle-in {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+@keyframes bubble-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.07);
+  }
+  80% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The cloud: white fill, a soft white glow, and a sky-blue crayon line over
+   a looser purple one, redrawn a little differently 6 times a second. */
+.cloud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.glow {
+  stroke: #fff;
+  stroke-width: 0.55em;
+  stroke-opacity: 0.45;
+}
+.fill {
+  fill: #fff;
+  stroke: #fff;
+  stroke-width: 0.22em;
+  stroke-opacity: 0.8;
+}
+.line {
+  stroke: #5cc8ff;
+  stroke-width: 0.1em;
+}
+.sketch {
+  stroke: #a98cf3;
+  stroke-width: 0.055em;
+  stroke-opacity: 0.75;
+}
+.boil {
+  animation: boil 0.5s step-end infinite;
+}
+@keyframes boil {
+  0% {
+    opacity: 1;
+  }
+  33.333%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.text {
+  position: relative;
+  margin: 0;
+  padding: 0.85em 1.1em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* "..." while Pixi is thinking or painting. */
+.dots {
+  display: inline-flex;
+  gap: 0.14em;
+  margin-left: 0.22em;
+  vertical-align: 0.02em;
+}
+.dots i {
+  width: 0.27em;
+  height: 0.27em;
+  border-radius: 50%;
+  background: #a98cf3;
+  animation: dot 1.2s ease-in-out infinite;
+}
+.dots i:nth-child(2) {
+  background: #5cc8ff;
+  animation-delay: 0.15s;
+}
+.dots i:nth-child(3) {
+  background: #6decb9;
+  animation-delay: 0.3s;
+}
+@keyframes dot {
+  0%,
+  60%,
+  100% {
+    transform: none;
+    opacity: 0.6;
+  }
+  30% {
+    transform: translateY(-0.22em);
+    opacity: 1;
+  }
+}
+
+/* Reduced motion: no bounce, no shrinking, no boiling; just a quick fade. */
+@media (prefers-reduced-motion: reduce) {
+  .circle,
+  .pop {
+    animation: fade-in 0.2s ease-out both !important;
+    animation-delay: 0s !important;
+  }
+  .layer[data-out] .fade {
+    transform: none;
+    transition: opacity 0.2s ease-in !important;
+    transition-delay: 0s !important;
+  }
+  .boil,
+  .dots i {
+    animation: none !important;
+  }
+  .dots i {
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

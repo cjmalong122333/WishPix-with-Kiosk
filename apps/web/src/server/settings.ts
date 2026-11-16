@@ -1,11 +1,13 @@
 import { prisma } from './db';
 
 // Settings the teacher can change on the Settings page, plus hidden values
-// the kiosk keeps (brightness). Stored as text.
+// the kiosk keeps (brightness). Stored as text. The kiosk has no controls of
+// its own: its language and colors come from here, sent with the live state.
 export const DEFAULTS: Record<string, string> = {
   language: 'en',
   volume: '70',
   theme_color: 'deep_blue',
+  kiosk_color: 'auto',
   auto_sleep: 'true',
   auto_sleep_minutes: '15',
   auto_logout: 'true',
@@ -16,9 +18,12 @@ export const DEFAULTS: Record<string, string> = {
 type Rule = { values: string[] } | { min: number; max: number } | { bool: true };
 
 const SCHEMA: Record<string, Rule> = {
-  language: { values: ['en', 'fil'] }, // Teacher App and kiosk
+  language: { values: ['en', 'fil'] }, // display language: Teacher App, kiosk screen, Color & Create word
   volume: { min: 0, max: 100 }, // kiosk sound effects
   theme_color: { values: ['deep_blue', 'teal', 'purple', 'green', 'orange'] }, // Teacher App accent
+  // Kiosk screen colors. auto: the design's colors for each mode (purple for
+  // Color & Create, green for Trace & Learn); the others use one color for both.
+  kiosk_color: { values: ['auto', 'purple', 'green', 'blue', 'orange', 'pink'] },
   auto_sleep: { bool: true },
   auto_sleep_minutes: { min: 1, max: 120 },
   auto_logout: { bool: true },
@@ -29,6 +34,7 @@ export type Settings = {
   language: 'en' | 'fil';
   volume: number;
   theme_color: string;
+  kiosk_color: string;
   auto_sleep: boolean;
   auto_sleep_minutes: number;
   auto_logout: boolean;
@@ -93,6 +99,7 @@ export async function screenPrefs() {
     language: s.language,
     volume: s.volume,
     themeColor: s.theme_color,
+    kioskColor: s.kiosk_color,
     autoLogout: s.auto_logout,
     autoLogoutMinutes: s.auto_logout_minutes,
   };

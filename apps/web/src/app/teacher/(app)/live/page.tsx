@@ -130,7 +130,7 @@ export default function LiveSession() {
       <SectionHead title={t('This session')}>
         <span className="text-[13px] text-muted-foreground">{t(requests.length === 1 ? '1 request' : '{n} requests', { n: requests.length })}</span>
       </SectionHead>
-      {data && requests.length === 0 && <Empty icon={<Mic />} title={t('No requests yet')} text={t('When a child taps the microphone and says an idea, it appears here.')} />}
+      {data && requests.length === 0 && <Empty icon={<Mic />} title={t('No requests yet')} text={t('When a child holds the talk button and says an idea, it appears here.')} />}
       <ul className="m-0 grid list-none gap-2 p-0">
         {requests.map((r) => (
           <li key={r.id}>

@@ -24,6 +24,16 @@ const THEMES = [
   ['green', 'Green', '#16a34a'],
   ['orange', 'Orange', '#ea580c'],
 ] as const;
+// Kiosk screen colors (the --k-* tokens in globals.css). Auto keeps the
+// design's colors: purple for Color & Create, green for Trace & Learn.
+const KIOSK_COLORS = [
+  ['auto', 'Auto', 'linear-gradient(135deg, #7950d5 50%, #287c64 50%)'],
+  ['purple', 'Purple', '#7950d5'],
+  ['green', 'Green', '#237159'],
+  ['blue', 'Blue', '#2a63c2'],
+  ['orange', 'Orange', '#a8530f'],
+  ['pink', 'Pink', '#b8356f'],
+] as const;
 const SLEEP_MINUTES = [5, 10, 15, 30, 60];
 const LOGOUT_MINUTES = [15, 30, 60, 120];
 
@@ -31,6 +41,7 @@ type Settings = {
   language: 'en' | 'fil';
   volume: number;
   theme_color: string;
+  kiosk_color: string;
   auto_sleep: boolean;
   auto_sleep_minutes: number;
   auto_logout: boolean;
@@ -70,8 +81,12 @@ export default function SettingsPage() {
       <PageTitle title={t('Settings')} lead={t('Changes are saved right away.')} small />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Section icon={<Globe />} title={t('Language')} text={t('Used by the Teacher App and the kiosk screen.')}>
-          <div className="flex gap-2" role="radiogroup" aria-label={t('Language')}>
+        <Section
+          icon={<Globe />}
+          title={t('Display Language')}
+          text={t('Used by the Teacher App, every kiosk screen and the word under Color & Create pictures. Tracing sheets always print in English and Filipino.')}
+        >
+          <div className="flex gap-2" role="radiogroup" aria-label={t('Display Language')}>
             {(
               [
                 ['en', 'English'],
@@ -116,6 +131,28 @@ export default function SettingsPage() {
           </div>
         </Section>
 
+        <Section icon={<Palette />} title={t('Kiosk color')} text={t('The colors of the kiosk screen. The kiosk changes right away.')}>
+          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label={t('Kiosk color')}>
+            {KIOSK_COLORS.map(([id, label, color]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={settings.kiosk_color === id}
+                className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 text-xs text-slate-600"
+                onClick={() => save({ kiosk_color: id }, t('Kiosk color saved.'))}
+              >
+                <i
+                  className={cn('grid size-10 place-items-center rounded-full text-white ring-offset-2', settings.kiosk_color === id && 'ring-2 ring-slate-400')}
+                  style={{ background: color }}
+                >
+                  {settings.kiosk_color === id && <Check size={16} strokeWidth={3} />}
+                </i>
+                {t(label)}
+              </button>
+            ))}
+          </div>
+        </Section>
+
         <Section icon={<Volume2 />} title={t('Kiosk sounds')} text={t('Small chimes when a child talks, a picture is ready and a page prints.')}>
           <Volume value={settings.volume} onSave={(v) => save({ volume: v }, t('Volume saved.'))} />
           <Button
@@ -123,8 +160,14 @@ export default function SettingsPage() {
             size="sm"
             className="mt-3"
             onClick={() =>
-              api('/api/settings/test-sound', { method: 'POST' })
-                .then(() => toast.success(t('Playing a test sound on the kiosk.')))
+              api<{ played: boolean; reason?: string }>('/api/settings/test-sound', { method: 'POST' })
+                .then((r) => {
+                  if (r.played) toast.success(t('The kiosk played a test sound.'));
+                  else if (r.reason === 'no_kiosk') toast.error(t('The kiosk screen is not open.'));
+                  else if (r.reason === 'muted') toast.error(t('The kiosk volume is 0. Turn it up first.'));
+                  // A browser plays no sound until someone presses a key on the page (not on the Pi).
+                  else toast.error(t('The kiosk screen cannot play sound yet. Press Yes or Talk on the kiosk once, then try again.'));
+                })
                 .catch((e: Error) => toast.error(t.error(e.message)))
             }
           >

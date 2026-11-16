@@ -12,36 +12,39 @@ datasource db {
 }
 
 model Teacher {
-  id           Int       @id @default(autoincrement())
-  username     String    @unique
-  passwordHash String    @map("password_hash")
-  displayName  String    @map("display_name")
-  tokenVersion Int       @default(0) @map("token_version") // raised on password change: older sign-ins stop working
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           Int        @id @default(autoincrement())
+  username     String     @unique
+  passwordHash String     @map("password_hash")
+  displayName  String     @map("display_name")
+  tokenVersion Int        @default(0) @map("token_version") // raised on password change: older sign-ins stop working
+  createdAt    DateTime   @default(now()) @map("created_at")
   sessions     Session[]
-  moderated    Request[] @relation("moderatedBy")
+  moderated    Request[]  @relation("moderatedBy")
   events       Event[]
+  printJobs    PrintJob[]
 
   @@map("teachers")
 }
 
 model Kiosk {
-  id       Int       @id @default(autoincrement())
-  name     String
-  firmware String
-  lastSeen DateTime? @map("last_seen")
-  sessions Session[]
+  id        Int        @id @default(autoincrement())
+  name      String
+  firmware  String
+  lastSeen  DateTime?  @map("last_seen")
+  sessions  Session[]
+  printJobs PrintJob[]
 
   @@map("kiosks")
 }
 
-// One row per activity session started by a teacher.
+// One row per session a teacher started. The mode is the activity_type and
+// its sub-mode the activity_subtype (column names kept from the first build).
 model Session {
   id              Int       @id @default(autoincrement())
   kioskId         Int       @map("kiosk_id")
   teacherId       Int       @map("teacher_id")
-  activityType    String    @map("activity_type") // color_create | trace_learn | free_play
-  activitySubtype String    @map("activity_subtype")
+  activityType    String    @map("activity_type") // trace_learn | color_create (free_play: retired, old rows only)
+  activitySubtype String    @map("activity_subtype") // trace_word | trace_image | coloring_page (older values in old rows)
   theme           String
   safetyLevel     String    @map("safety_level") // strict | standard | custom
   languages       String // JSON array
@@ -123,4 +126,32 @@ model Report {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("reports")
+}
+
+// A file a teacher sent to the kiosk printer (Print to Kiosk). It is not a
+// child's print: it is listed as "Teacher Print" and never counted with the
+// children's pictures. The uploaded file is deleted once the job is done or
+// cancelled (filePath is then null).
+model PrintJob {
+  id           Int       @id @default(autoincrement())
+  fileName     String    @map("file_name") // as the teacher uploaded it
+  filePath     String?   @map("file_path") // in data/uploads
+  fileType     String    @map("file_type") // png | jpg | pdf
+  pageCount    Int       @default(1) @map("page_count")
+  pageRange    String    @default("all") @map("page_range") // "all" or e.g. "1-3, 5"
+  copies       Int       @default(1)
+  status       String    @default("pending") // pending | printing | done | failed | cancelled
+  sheetsDone   Int       @default(0) @map("sheets_done")
+  sheetsTotal  Int       @default(1) @map("sheets_total")
+  createdBy    Int       @map("created_by")
+  kioskId      Int?      @map("kiosk_id")
+  errorMessage String?   @map("error_message")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  printedAt    DateTime? @map("printed_at")
+  teacher      Teacher   @relation(fields: [createdBy], references: [id])
+  kiosk        Kiosk?    @relation(fields: [kioskId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("print_jobs")
 }

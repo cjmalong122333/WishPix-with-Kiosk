@@ -10,10 +10,22 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    printer_mode: Literal["mock", "cups"] = "mock"
+    # mock: no printer (pages saved as PNG); cups: the inkjet through CUPS
+    # (recommended); escpos: an optional 58 mm thermal printer.
+    printer_mode: Literal["mock", "cups", "escpos"] = "mock"
+    # Page layout: 4x6 (inkjet sticker paper) or 58mm (thermal roll). Empty
+    # means 58mm for escpos and 4x6 otherwise.
+    page_format: Literal["", "4x6", "58mm"] = ""
+
     cups_printer: str = ""
     cups_media: str = "4x6"
     cups_extra_options: str = "fit-to-page print-quality=4"
+
+    # Thermal printer: a USB device (/dev/usb/lp0) or a network printer (tcp://192.168.1.50:9100).
+    escpos_device: str = "/dev/usb/lp0"
+    escpos_cut: bool = True
+    # Print speed, to know when a page has come out (cheap 58 mm printers: 50-90 mm/s).
+    escpos_mm_per_second: float = 50
 
     paper_capacity: int = 20
     state_dir: Path = Path("./data")
@@ -32,6 +44,10 @@ class Settings(BaseSettings):
     @property
     def pages_dir(self) -> Path:
         return self.state_dir / "pages"
+
+    @property
+    def format_id(self) -> str:
+        return self.page_format or ("58mm" if self.printer_mode == "escpos" else "4x6")
 
 
 @lru_cache

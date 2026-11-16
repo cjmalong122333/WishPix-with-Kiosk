@@ -5,8 +5,9 @@ import { env } from '../env';
 //   1. moderation: a second, smarter safety check (free moderation model)
 //   2. prompt processing: turns what the child said (English, Filipino or
 //      Taglish) into a short English subject for the image model, double-
-//      checks it is right for preschoolers, and writes the bilingual label
-//      printed on the sheet.
+//      checks it is right for preschoolers, writes a bilingual label, and
+//      picks the one word printed on the page in English and Filipino
+//      ("CAT / PUSA").
 // Without an API key both are skipped and the word filter alone decides.
 
 export const openaiAvailable = () => !!env.OPENAI_API_KEY;
@@ -59,6 +60,8 @@ const WishSchema = z.object({
   subject: z.string().max(120),
   label_en: z.string().max(40),
   label_fil: z.string().max(40),
+  word_en: z.string().max(30),
+  word_fil: z.string().max(30),
   safe: z.boolean(),
   category: z.enum(['none', 'violence', 'weapons', 'adult', 'drugs', 'bad_language', 'hate', 'self_harm', 'personal_info', 'scary', 'rough_play']),
 });
@@ -67,11 +70,13 @@ export type ProcessedWish = z.infer<typeof WishSchema>;
 const JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['subject', 'label_en', 'label_fil', 'safe', 'category'],
+  required: ['subject', 'label_en', 'label_fil', 'word_en', 'word_fil', 'safe', 'category'],
   properties: {
     subject: { type: 'string', description: 'What to draw, in simple English, max 12 words. No style words.' },
-    label_en: { type: 'string', description: 'Short English label for the printed sheet, 1-3 words, e.g. "Happy cat".' },
+    label_en: { type: 'string', description: 'Short English label for the idea, 1-3 words, e.g. "Happy cat".' },
     label_fil: { type: 'string', description: 'The same label in Filipino (Tagalog), 1-3 words, e.g. "Masayang pusa".' },
+    word_en: { type: 'string', description: 'The main thing as ONE simple English word, singular, printed for tracing, e.g. "cat".' },
+    word_fil: { type: 'string', description: 'The same word in Filipino (Tagalog), ONE word, e.g. "pusa".' },
     safe: { type: 'boolean', description: 'False if the idea is not right for children aged 3 to 5.' },
     category: {
       type: 'string',
@@ -87,7 +92,7 @@ export async function processWish(text: string, ctx: WishContext): Promise<Proce
     'You help a picture-printing kiosk in a Philippine daycare for children aged 3 to 5.',
     'A child said what they want to see, in English, Filipino or Taglish. Speech recognition may have small mistakes.',
     'Return the subject to draw in simple English, keeping the child\'s idea (do not add new objects, keep numbers they said).',
-    'Write a 1-3 word label in English and in Filipino.',
+    'Write a 1-3 word label in English and in Filipino, and the main thing as one simple word in each language (printed on the page for tracing and coloring).',
     'Mark safe=false (with a category) for violence, weapons, adult content, drugs or alcohol, bad words, hate, self-harm or personal information.',
     ctx.strict ? 'Strict mode: also mark scary things (monsters, ghosts) and rough play (fighting, pirates, swords) as unsafe.' : '',
     'Silly and imaginative ideas are fine (a dragon eating pizza, a flying dog).',
@@ -101,7 +106,7 @@ export async function processWish(text: string, ctx: WishContext): Promise<Proce
       model: env.OPENAI_MODEL,
       messages: [
         { role: 'system', content: rules },
-        { role: 'user', content: `Activity: ${ctx.activity}. Theme: ${ctx.theme}. Spoken language: ${ctx.language}.\nChild said: "${text}"` },
+        { role: 'user', content: `Mode: ${ctx.activity}. Theme: ${ctx.theme}. Spoken language: ${ctx.language}.\nChild said: "${text}"` },
       ],
       response_format: { type: 'json_schema', json_schema: { name: 'wish', strict: true, schema: JSON_SCHEMA } },
     },
@@ -110,7 +115,7 @@ export async function processWish(text: string, ctx: WishContext): Promise<Proce
   const message = data.choices?.[0]?.message;
   if (!message?.content) {
     // A refusal means the model would not touch the request: treat it as unsafe.
-    return { subject: text, label_en: '', label_fil: '', safe: false, category: 'violence' };
+    return { subject: text, label_en: '', label_fil: '', word_en: '', word_fil: '', safe: false, category: 'violence' };
   }
   return WishSchema.parse(JSON.parse(message.content));
 }

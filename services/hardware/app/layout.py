@@ -1,10 +1,20 @@
-"""Print-ready page layout.
+"""Print-ready pages.
 
-Builds one 4x6 inch portrait page at 300 dpi (1200 x 1800 px) from the
-generated picture: header, title, picture, Trace & Learn guides and a name
-line. Coloring pages are turned into clean black line art; Free Play pages
-keep their colors. Letters, numbers and shapes for tracing are drawn here as
-dots, never by the AI, so they are always correct.
+Two page formats, picked by the printer (PAGE_FORMAT in .env):
+- "4x6": 4x6 in portrait at 300 dpi (1200 x 1800 px) for the inkjet. This is
+  the recommended printer and the default.
+- "58mm": the 48 mm printable width of a 58 mm thermal roll at 203 dpi
+  (384 dots), 72 mm long. Optional. These pages go through thermal_ready()
+  (contrast + Floyd-Steinberg dithering) before printing.
+
+Children's pages, all black on white (no gray, no color):
+- trace_word:  the word in dotted capitals, 4 rows, "CAT / PUSA". No picture.
+- trace_image: the picture as a dashed outline to trace (eyes and other small
+  details stay solid), then one dotted row "CAT / PUSA".
+- coloring:    the picture with thick solid outlines to color, then the word
+  in heavy capitals, in the kiosk's display language.
+Letters are always drawn here with a font, never by the AI, so they are
+always spelled right and sharp.
 """
 
 from __future__ import annotations
@@ -18,45 +28,41 @@ from functools import lru_cache
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .config import get_settings
+from .thermal import thermal_ready
+from .tracing import draw_dashes, draw_dots, paths, thin
 
-DPI = 300
-PAGE_W, PAGE_H = 4 * DPI, 6 * DPI
-MARGIN = 70
-INK = (40, 46, 58)
-GUIDE = (201, 208, 219)
-NAVY = (17, 40, 74)
-MUTED = (138, 148, 166)
+
+@dataclass(frozen=True)
+class PageFormat:
+    id: str
+    width: int
+    height: int
+    dpi: int
+    thermal: bool
+
+    def mm(self, value: float) -> float:
+        return value * self.dpi / 25.4
+
+
+FORMATS = {
+    "4x6": PageFormat("4x6", 1200, 1800, 300, False),
+    "58mm": PageFormat("58mm", 384, 576, 203, True),
+}
+INKJET = FORMATS["4x6"]
 
 TEXT = {
     "fil": {
-        "Color me!": "Kulayan mo ako!",
-        "Name:": "Pangalan:",
-        "{letter} is for {word}": "Ang {letter} ay para sa {word}",
-        "Count and trace": "Bilangin at bakatin",
-        "Trace the {shape}s": "Bakatin ang mga {shape}",
-        "Follow the dotted line": "Sundan ang tuldok-tuldok na linya",
-        "Trace the word": "Bakatin ang salita",
-        "Trace & Learn": "Bakat at Matuto",
+        "Color the picture and share something about it with your teacher or classmates.": (
+            "Kulayan ang larawan at magkuwento tungkol dito sa iyong guro o mga kaklase."
+        ),
         "Test page": "Pansubok na pahina",
         "The printer is working!": "Gumagana ang printer!",
-        "circle": "bilog",
-        "square": "parisukat",
-        "triangle": "tatsulok",
-        "star": "bituin",
-        "heart": "puso",
-        "Animals": "Mga Hayop",
-        "Transportation": "Mga Sasakyan",
-        "Fruits": "Mga Prutas",
-        "Community Helpers": "Mga Katulong sa Komunidad",
-        "Shapes": "Mga Hugis",
-        "Colors": "Mga Kulay",
-        "Nature": "Kalikasan",
     }
 }
-MONTHS_FIL = ["Ene", "Peb", "Mar", "Abr", "May", "Hun", "Hul", "Ago", "Set", "Okt", "Nob", "Dis"]
+INSTRUCTION = "Color the picture and share something about it with your teacher or classmates."
 
 
 @dataclass
@@ -65,18 +71,13 @@ class PageRequest:
     activity_type: str | None = None
     theme: str | None = None
     sheet: dict | None = None
-    label: str | None = None
-    caption: str | None = None
-    colorful: bool = False
+    label: str | None = None  # pages made before the bilingual words: the label in one language
     language: str = "en"
     date: datetime = field(default_factory=datetime.now)
 
 
-def tr(lang: str, text: str, **values: str) -> str:
-    out = TEXT.get(lang, {}).get(text, text)
-    for k, v in values.items():
-        out = out.replace("{" + k + "}", v)
-    return out
+def tr(lang: str, text: str) -> str:
+    return TEXT.get(lang, {}).get(text, text)
 
 
 # ---------- Fonts ----------
@@ -89,24 +90,45 @@ FONT_CANDIDATES = [
 ]
 
 
-@lru_cache(maxsize=64)
+@lru_cache(maxsize=128)
 def font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    size = max(6, int(size))
     for path in [get_settings().font_path, *FONT_CANDIDATES]:
         if path and os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default(size)
 
 
-def text_width(draw: ImageDraw.ImageDraw, text: str, f) -> int:
-    left, _, right, _ = draw.textbbox((0, 0), text, font=f)
+def text_width(draw: ImageDraw.ImageDraw, text: str, f, stroke: int = 0) -> int:
+    left, _, right, _ = draw.textbbox((0, 0), text, font=f, stroke_width=stroke)
     return right - left
 
 
-def fit_font(draw: ImageDraw.ImageDraw, text: str, max_width: int, start: int, minimum: int = 28):
-    size = start
-    while size > minimum and text_width(draw, text, font(size)) > max_width:
-        size -= 4
-    return font(size)
+# ---------- What goes on a child's page ----------
+
+
+def page_content(req: PageRequest) -> tuple[str, str, str]:
+    """(kind, English word, Filipino word). Pages made before November 2026
+    still print: old tracing sheets become Trace Image, everything else
+    (Color & Create, Free Play) a coloring page."""
+    sheet = req.sheet or {}
+    kind = sheet.get("kind")
+    en = str(sheet.get("en") or "").strip()
+    fil = str(sheet.get("fil") or "").strip()
+    if kind in ("trace_word", "trace_image", "coloring"):
+        return kind, en or (req.label or ""), fil
+    word = str(sheet.get("word") or "").strip()
+    if req.activity_type == "trace_learn":
+        return "trace_image", word or (req.label or ""), ""
+    return "coloring", req.label or word, ""
+
+
+def bilingual(en: str, fil: str) -> str:
+    """'CAT / PUSA', or just one word when there is no translation."""
+    en, fil = en.strip().upper(), fil.strip().upper()
+    if en and fil and en != fil:
+        return f"{en} / {fil}"
+    return en or fil
 
 
 # ---------- Picture processing ----------
@@ -125,297 +147,401 @@ def line_art(img: Image.Image) -> Image.Image:
     return Image.fromarray(binary).convert("RGB")
 
 
-def colorful(img: Image.Image) -> Image.Image:
-    img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)
-    return img.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=3))
+def fit(img: Image.Image, width: int, height: int) -> Image.Image:
+    """img scaled to fit inside width x height, keeping its shape."""
+    scale = min(width / img.width, height / img.height)
+    return img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))), Image.LANCZOS)
 
 
-def paste_fit(page: Image.Image, img: Image.Image, box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
-    """Scales img into box (keeping its shape), centered. Returns where it landed."""
-    x0, y0, x1, y1 = box
-    w, h = x1 - x0, y1 - y0
-    scale = min(w / img.width, h / img.height)
-    size = (max(1, int(img.width * scale)), max(1, int(img.height * scale)))
-    resized = img.resize(size, Image.LANCZOS)
-    x = x0 + (w - size[0]) // 2
-    y = y0 + (h - size[1]) // 2
-    page.paste(resized, (x, y))
-    return x, y, x + size[0], y + size[1]
-
-
-# ---------- Dotted tracing guides ----------
-
-
-def dots_along(draw: ImageDraw.ImageDraw, points: np.ndarray, spacing: float, radius: float, closed: bool = True):
-    """Dots at even distances along a polyline."""
-    if len(points) < 2:
-        return
-    pts = np.vstack([points, points[:1]]) if closed else points
-    carry = 0.0
-    for (ax, ay), (bx, by) in zip(pts[:-1], pts[1:], strict=False):
-        seg = math.hypot(bx - ax, by - ay)
-        d = carry
-        while d <= seg:
-            t = d / seg if seg else 0
-            x, y = ax + (bx - ax) * t, ay + (by - ay) * t
-            draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=INK)
-            d += spacing
-        carry = d - seg
-
-
-def dotted_mask(draw: ImageDraw.ImageDraw, mask: np.ndarray, offset: tuple[int, int], spacing: float, radius: float):
-    """Turns the outline of every filled area in mask into dots."""
-    contours, _ = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    ox, oy = offset
-    for c in contours:
-        if cv2.contourArea(c) < 30:
-            continue
-        pts = c.reshape(-1, 2).astype(float) + (ox, oy)
-        dots_along(draw, pts, spacing, radius)
-
-
-def dotted_text(page: Image.Image, text: str, box: tuple[int, int, int, int], guides: bool = True):
-    draw = ImageDraw.Draw(page)
-    x0, y0, x1, y1 = box
-    height = y1 - y0
-    size = int(height * 0.95)
-    while size > 40 and text_width(draw, text, font(size)) > (x1 - x0):
-        size -= 6
-    f = font(size)
-    left, top, right, bottom = draw.textbbox((0, 0), text, font=f)
-    w, h = right - left, bottom - top
-    mask_img = Image.new("L", (w + 20, h + 20), 0)
-    ImageDraw.Draw(mask_img).text((10 - left, 10 - top), text, font=f, fill=255)
-    tx = x0 + ((x1 - x0) - w) // 2 - 10
-    ty = y1 - h - 30
-    if guides:
-        base = ty + 10 + h
-        mid = ty + 10 + h // 2
-        draw.line((x0, base, x1, base), fill=GUIDE, width=4)
-        for x in range(x0, x1, 36):
-            draw.line((x, mid, min(x + 18, x1), mid), fill=(226, 230, 236), width=3)
-    spacing = max(14, size / 14)
-    dotted_mask(draw, np.array(mask_img), (tx, ty), spacing, max(3.5, size / 55))
-
-
-SHAPES = {
-    "circle": lambda d, b: d.ellipse(b, fill=255),
-    "square": lambda d, b: d.rectangle(b, fill=255),
-    "triangle": lambda d, b: d.polygon([((b[0] + b[2]) / 2, b[1]), (b[2], b[3]), (b[0], b[3])], fill=255),
-    "heart": lambda d, b: _heart(d, b),
-    "star": lambda d, b: _star(d, b),
-}
-
-
-def _star(d: ImageDraw.ImageDraw, b):
-    cx, cy, r = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2, (b[2] - b[0]) / 2
-    pts = []
-    for i in range(10):
-        ang = -math.pi / 2 + i * math.pi / 5
-        rr = r if i % 2 == 0 else r * 0.45
-        pts.append((cx + rr * math.cos(ang), cy + rr * math.sin(ang)))
-    d.polygon(pts, fill=255)
-
-
-def _heart(d: ImageDraw.ImageDraw, b):
-    cx, cy, s = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2, (b[2] - b[0]) / 34
-    pts = [
+def crop_to_ink(img: Image.Image, pad: int = 4) -> Image.Image:
+    """Cuts away empty paper around the drawing, so it fills its box."""
+    black = np.array(ImageOps.grayscale(img)) < 128
+    ys, xs = np.nonzero(black)
+    if len(xs) == 0:
+        return img
+    return img.crop(
         (
-            cx + s * 16 * math.sin(t) ** 3,
-            cy - s * (13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)),
+            max(0, xs.min() - pad),
+            max(0, ys.min() - pad),
+            min(img.width, xs.max() + pad + 1),
+            min(img.height, ys.max() + pad + 1),
         )
-        for t in np.linspace(0, 2 * math.pi, 200)
-    ]
-    d.polygon(pts, fill=255)
+    )
 
 
-def dotted_shape(page: Image.Image, shape: str, box: tuple[int, int, int, int]):
+def ellipse_kernel(size: float) -> np.ndarray:
+    k = max(1, int(round(size)))
+    k += 1 - k % 2
+    return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+
+
+def stroke_half_width(black: np.ndarray, skeleton: np.ndarray | None = None) -> float:
+    """Typical half thickness of the lines in a black mask."""
+    if not black.any():
+        return 1.0
+    dist = cv2.distanceTransform(black.astype(np.uint8), cv2.DIST_L2, 3)
+    centre = thin(black) if skeleton is None else skeleton
+    values = dist[centre > 0]
+    return float(np.median(values)) if len(values) else 1.0
+
+
+def approx_half_width(black: np.ndarray) -> float:
+    """Half thickness of the lines, quickly (no thinning): most line pixels
+    are less than half a line width from the paper."""
+    dist = cv2.distanceTransform(black.astype(np.uint8), cv2.DIST_L2, 3)
+    values = dist[dist > 0]
+    return float(np.percentile(values, 90)) if len(values) else 1.0
+
+
+def paste_black(page: Image.Image, black: np.ndarray, at: tuple[int, int]):
+    """Paints the True pixels of black onto the page at (x, y)."""
+    mask = Image.fromarray((black * 255).astype(np.uint8))
+    page.paste(0, at, mask)
+
+
+def coloring_picture(page: Image.Image, picture: Image.Image, box: tuple[int, int, int, int], fmt: PageFormat):
+    """Thick, solid, smooth outlines with white insides, filling the box."""
     x0, y0, x1, y1 = box
-    side = min(x1 - x0, y1 - y0)
-    mask_img = Image.new("L", (side + 20, side + 20), 0)
-    SHAPES.get(shape, SHAPES["circle"])(ImageDraw.Draw(mask_img), (10, 10, side + 10, side + 10))
-    ox = x0 + ((x1 - x0) - side) // 2 - 10
-    oy = y0 + ((y1 - y0) - side) // 2 - 10
-    mask = cv2.erode(np.array(mask_img), np.ones((3, 3), np.uint8))
-    dotted_mask(ImageDraw.Draw(page), mask, (ox, oy), 20, 5)
+    art = crop_to_ink(line_art(picture))
+    fitted = fit(ImageOps.grayscale(art), x1 - x0, y1 - y0)
+    black = np.array(fitted) < 140
+    # Thin AI lines would print faint (and vanish on a thermal roll): thicken them.
+    want = fmt.mm(0.8)
+    have = 2 * approx_half_width(black)
+    if have < want:
+        black = cv2.dilate(black.astype(np.uint8), ellipse_kernel(want - have + 1)).astype(bool)
+    paste_black(page, black, (x0 + (x1 - x0 - fitted.width) // 2, y0 + (y1 - y0 - fitted.height) // 2))
 
 
-def path_points(kind: str, box: tuple[int, int, int, int]) -> np.ndarray:
+def dashed_picture(page: Image.Image, picture: Image.Image, box: tuple[int, int, int, int], fmt: PageFormat):
+    """The picture as a dashed outline to trace. Eyes, nose, mouth and other
+    small details stay solid so the subject is easy to recognize."""
     x0, y0, x1, y1 = box
-    w, h = x1 - x0, y1 - y0
-    t = np.linspace(0, 1, 600)
-    if kind == "zigzag":
-        y = 1 - np.abs((t * 10) % 2 - 1)
-    elif kind == "bumps":
-        y = 1 - np.abs(np.sin(t * math.pi * 5))
-    elif kind == "loops":
-        # Prolate cycloid: a rolling point that makes small loops.
-        u = t * 2 * math.pi * 5
-        x = u - 2.2 * np.sin(u)
-        y = -2.2 * np.cos(u)
-        x = (x - x.min()) / (x.max() - x.min())
-        y = 1 - (y - y.min()) / (y.max() - y.min())
-        return np.column_stack([x0 + 20 + x * (w - 40), y0 + 10 + y * (h - 20)])
-    else:  # wave
-        y = 0.5 + 0.5 * np.sin(t * math.pi * 8)
-    return np.column_stack([x0 + 20 + t * (w - 40), y0 + 10 + y * (h - 20)])
+    art = crop_to_ink(line_art(picture))
+    page_size = fit(art, x1 - x0, y1 - y0).size  # where the drawing lands on the page
+    # Find the lines at a working size where they are about 6 px thick: thick
+    # AI outlines take long to thin, and a small thermal page needs more
+    # detail than it has pixels for a smooth path.
+    fitted = fit(ImageOps.grayscale(art), page_size[0] * 2, page_size[1] * 2)
+    black = (np.array(fitted) < 140).astype(np.uint8)
+    shrink = min(1.0, 3.0 / max(approx_half_width(black), 0.5))
+    if shrink < 1:
+        black = (cv2.resize(black * 255, None, fx=shrink, fy=shrink, interpolation=cv2.INTER_AREA) > 100).astype(
+            np.uint8
+        )
+    work = black.shape[1] / page_size[0]  # working pixels per page pixel
+    # An AI picture that is already dashed: join the dashes into one line first.
+    black = cv2.morphologyEx(black, cv2.MORPH_CLOSE, ellipse_kernel(fmt.mm(1.0) * work))
+
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(black, connectivity=8)
+    dist = cv2.distanceTransform(black, cv2.DIST_L2, 3)
+    skeleton = thin(black)
+    half = stroke_half_width(black.astype(bool), skeleton)
+    diag = math.hypot(*black.shape)
+    solid = np.zeros_like(black, dtype=bool)
+    for i in range(1, count):
+        x, y, w, h, area = stats[i]
+        size = math.hypot(w, h)
+        part = labels[y : y + h, x : x + w] == i
+        thick = float(dist[y : y + h, x : x + w][part].max())
+        filled = area / max(1, w * h)
+        if size < 0.06 * diag or (size < 0.16 * diag and thick > 2.2 * half and filled > 0.35):
+            solid[y : y + h, x : x + w] |= part
+
+    # The parts are separate, so the solid ones can simply be cut out of the centre lines.
+    lines = paths((skeleton > 0) & ~solid, min_length=fmt.mm(0.8) * work)
+    left = x0 + ((x1 - x0) - page_size[0]) / 2
+    top = y0 + ((y1 - y0) - page_size[1]) / 2
+    if solid.any():
+        small = cv2.resize(solid.astype(np.uint8) * 255, page_size, interpolation=cv2.INTER_AREA) > 100
+        paste_black(page, small, (round(left), round(top)))
+    draw_dashes(
+        ImageDraw.Draw(page),
+        lines,
+        dash=fmt.mm(2.4),
+        gap=fmt.mm(1.4),
+        width=max(2, round(fmt.mm(0.5))),
+        scale=1 / work,
+        offset=(left, top),
+    )
 
 
-def dotted_path(page: Image.Image, kind: str, box: tuple[int, int, int, int]):
-    draw = ImageDraw.Draw(page)
-    pts = path_points(kind, box)
-    sx, sy = pts[0]
-    draw.ellipse((sx - 13, sy - 13, sx + 13, sy + 13), fill=(22, 163, 74))
-    dots_along(draw, pts, 22, 6, closed=False)
+# ---------- Dotted tracing letters ----------
 
 
-# ---------- Page ----------
+@dataclass
+class DottedRow:
+    text: str
+    lines: list
+    scale: float
+    width: float
+    height: float
+    letter_height: float
 
 
-def format_date(d: datetime, lang: str) -> str:
-    if lang == "fil":
-        return f"{MONTHS_FIL[d.month - 1]} {d.day}, {d.year}"
-    return d.strftime("%b %d, %Y").replace(" 0", " ")
+TRACKING = 0.3  # extra space between letters, as a share of the letter height
 
 
-def trace_title(sheet: dict | None, lang: str) -> str:
-    kind = (sheet or {}).get("kind")
-    if kind == "letter":
-        return tr(lang, "{letter} is for {word}", letter=sheet["letter"], word=sheet["word"])
-    if kind == "number":
-        return tr(lang, "Count and trace")
-    if kind == "shape":
-        return tr(lang, "Trace the {shape}s", shape=tr(lang, sheet["shape"]))
-    if kind == "prewriting":
-        return tr(lang, "Follow the dotted line")
-    if kind == "word":
-        return tr(lang, "Trace the word")
-    return tr(lang, "Trace & Learn")
+def dotted_row(text: str, max_width: float, max_height: float, fmt: PageFormat) -> DottedRow:
+    """The centre lines of text in capitals, as big as fits, with wide letter spacing."""
+    text = text.upper()
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+
+    def measure(size: int) -> tuple[float, float]:
+        f = font(size)
+        cap = probe.textbbox((0, 0), "H", font=f)
+        cap_h = cap[3] - cap[1]
+        width = sum(f.getlength(c) for c in text) + TRACKING * cap_h * (len(text) - 1)
+        return width, cap_h
+
+    size = 400
+    width, cap_h = measure(size)
+    size = max(8, int(size * min(max_width / width, max_height / cap_h)))
+    width, cap_h = measure(size)
+    while size > 8 and (width > max_width or cap_h > max_height):
+        size -= 1
+        width, cap_h = measure(size)
+
+    # Find the centre lines at one working size (letters 140 px tall), whatever
+    # the page size, then scale the points to the page.
+    work = 140 / max(1, cap_h)
+    f = font(round(size * work))
+    cap = probe.textbbox((0, 0), "H", font=f)
+    work_cap = cap[3] - cap[1]
+    pad = round(0.4 * work_cap)  # room for Ñ's tilde and the slash
+    canvas = Image.new("L", (int(width * work) + 2 * pad, work_cap + 2 * pad), 0)
+    draw = ImageDraw.Draw(canvas)
+    x = pad
+    for c in text:
+        draw.text((x, pad - cap[1]), c, font=f, fill=255)
+        x += f.getlength(c) + TRACKING * work_cap
+    glyphs = np.array(canvas) > 127
+    skeleton = thin(glyphs)
+    half = stroke_half_width(glyphs, skeleton)
+    lines = [(pts - pad, closed) for pts, closed in paths(skeleton, min_length=work_cap * 0.12, trim=half * 0.9)]
+    return DottedRow(text=text, lines=lines, scale=cap_h / work_cap, width=width, height=cap_h, letter_height=cap_h)
 
 
-def render_page(req: PageRequest, image_bytes: bytes | None) -> Image.Image:
-    lang = req.language if req.language in ("en", "fil") else "en"
-    page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
-    draw = ImageDraw.Draw(page)
-    inner = (MARGIN, PAGE_W - MARGIN)
+def dot_style(row: DottedRow, fmt: PageFormat) -> tuple[float, float]:
+    """(spacing, radius) of the dots. Never smaller than about 0.6 mm dots
+    every 1.3 mm, or a thermal printer blurs them together or drops them."""
+    return max(fmt.mm(1.3), row.letter_height * 0.1), max(fmt.mm(0.3), row.letter_height * 0.022)
 
-    # Header: brand left, theme and date right.
-    small = font(34)
-    draw.text((MARGIN, MARGIN), "WishPix", font=font(38), fill=NAVY)
-    right = " · ".join(x for x in [tr(lang, req.theme) if req.theme else "", format_date(req.date, lang)] if x)
-    draw.text((PAGE_W - MARGIN - text_width(draw, right, small), MARGIN + 4), right, font=small, fill=MUTED)
-    y = MARGIN + 66
-    draw.line((MARGIN, y, PAGE_W - MARGIN, y), fill=(229, 233, 240), width=3)
-    y += 30
 
-    picture = None
-    if image_bytes:
-        picture = Image.open(io.BytesIO(image_bytes))
-        picture = ImageOps.exif_transpose(picture).convert("RGB")
-        picture = colorful(picture) if req.colorful else line_art(picture)
+def draw_dotted_row(page: Image.Image, row: DottedRow, box: tuple[float, float, float, float], fmt: PageFormat):
+    """Dots along the letters, centred in box."""
+    x0, y0, x1, y1 = box
+    left = x0 + ((x1 - x0) - row.width) / 2
+    top = y0 + ((y1 - y0) - row.height) / 2
+    spacing, radius = dot_style(row, fmt)
+    draw_dots(ImageDraw.Draw(page), row.lines, spacing=spacing, radius=radius, scale=row.scale, offset=(left, top))
 
-    if req.kind == "test":
-        title = tr(lang, "Test page")
-        f = fit_font(draw, title, inner[1] - inner[0], 96)
-        draw.text(((PAGE_W - text_width(draw, title, f)) // 2, y + 40), title, font=f, fill=INK)
-        msg = tr(lang, "The printer is working!")
-        f2 = fit_font(draw, msg, inner[1] - inner[0], 64)
-        draw.text(((PAGE_W - text_width(draw, msg, f2)) // 2, y + 200), msg, font=f2, fill=INK)
-        for i, shade in enumerate([0, 64, 128, 192]):
-            x = MARGIN + 40 + i * 260
-            draw.rectangle((x, y + 420, x + 220, y + 640), fill=(shade, shade, shade))
-        dotted_shape(page, "star", (MARGIN, y + 760, PAGE_W - MARGIN, y + 1300))
+
+# Letters smaller than this are hard for small hands to trace: a long label
+# is then broken after the slash ("BUTTERFLY /" then "PARU-PARO").
+MIN_LETTER_MM = {False: 6.0, True: 5.0}
+LINE_PITCH = 1.5  # line to line, in letter heights
+
+
+def label_lines(text: str, max_width: float, max_height: float, fmt: PageFormat) -> list[DottedRow]:
+    """The label as one dotted line, or two when one line would be too small."""
+    one = dotted_row(text, max_width, max_height, fmt)
+    if one.letter_height >= fmt.mm(MIN_LETTER_MM[fmt.thermal]) or " / " not in text:
+        return [one]
+    first, second = text.split(" / ", 1)
+    parts = [f"{first} /", second]
+    # Both lines get the same letter size, set by the line that has to shrink most.
+    height = min(dotted_row(p, max_width, max_height, fmt).letter_height for p in parts)
+    if height <= one.letter_height:
+        return [one]
+    return [dotted_row(p, max_width, height, fmt) for p in parts]
+
+
+def lines_height(lines: list[DottedRow]) -> float:
+    return lines[0].height * (1 + LINE_PITCH * (len(lines) - 1))
+
+
+def draw_label(page: Image.Image, lines: list[DottedRow], box: tuple[float, float, float, float], fmt: PageFormat):
+    """The label lines stacked and centred in box."""
+    x0, y0, x1, y1 = box
+    top = y0 + ((y1 - y0) - lines_height(lines)) / 2
+    for i, row in enumerate(lines):
+        y = top + i * row.height * LINE_PITCH
+        draw_dotted_row(page, row, (x0, y, x1, y + row.height), fmt)
+
+
+# ---------- Pages ----------
+
+
+def wrap(draw: ImageDraw.ImageDraw, text: str, f, width: int) -> list[str]:
+    lines: list[str] = []
+    for word in text.split():
+        if lines and text_width(draw, f"{lines[-1]} {word}", f) <= width:
+            lines[-1] += f" {word}"
+        else:
+            lines.append(word)
+    return lines
+
+
+ROWS = 4
+
+
+def trace_word_page(fmt: PageFormat, text: str) -> Image.Image:
+    """4 equal rows of the dotted label, filling the sheet."""
+    if fmt.thermal:
+        # A 48 mm roll is too narrow for "CAT / PUSA" at a size a child can
+        # trace, so the rows run along the paper: the page is landscape (as
+        # the child holds it) and the printer prints it sideways.
+        height = fmt.width
+        margin = round(height * 0.05)
+        row_h = (height - 2 * margin) / ROWS
+        row = dotted_row(text, fmt.mm(190), row_h * 0.62, fmt)
+        width = max(height, round(row.width + 2 * margin))
+        page = Image.new("L", (width, height), 255)
+        for i in range(ROWS):
+            top = margin + i * row_h
+            draw_label(page, [row], (margin, top, width - margin, top + row_h), fmt)
         return page
 
-    # Title.
-    title = None
-    if req.activity_type == "color_create":
-        title = tr(lang, "Color me!")
-    elif req.activity_type == "trace_learn":
-        title = trace_title(req.sheet, lang)
-    if title:
-        f = fit_font(draw, title, inner[1] - inner[0], 92)
-        draw.text(((PAGE_W - text_width(draw, title, f)) // 2, y), title, font=f, fill=INK)
-        y += 130
-
-    # Bottom: caption (Free Play / label) and the name line.
-    bottom = PAGE_H - MARGIN
-    name = tr(lang, "Name:")
-    nf = font(52)
-    draw.text((MARGIN, bottom - 60), name, font=nf, fill=INK)
-    nx = MARGIN + text_width(draw, name, nf) + 24
-    draw.line((nx, bottom - 12, PAGE_W - MARGIN, bottom - 12), fill=(51, 51, 51), width=5)
-    bottom -= 110
-
-    caption = req.caption if req.activity_type == "free_play" else req.label
-    if caption and req.activity_type != "trace_learn":
-        text = caption[:40]
-        text = text[0].upper() + text[1:]
-        cf = fit_font(draw, text, inner[1] - inner[0], 84)
-        draw.text(((PAGE_W - text_width(draw, text, cf)) // 2, bottom - 100), text, font=cf, fill=INK)
-        bottom -= 130
-
-    body = (MARGIN, y, PAGE_W - MARGIN, bottom)
-    sheet = req.sheet if req.activity_type == "trace_learn" else None
-    if sheet:
-        draw_trace(page, sheet, picture, body)
-    elif picture:
-        paste_fit(page, picture, body)
+    page = Image.new("L", (fmt.width, fmt.height), 255)
+    margin = round(fmt.width * 0.05)
+    row_h = (fmt.height - 2 * margin) / ROWS
+    lines = label_lines(text, fmt.width - 2 * margin, row_h * 0.62, fmt)
+    if len(lines) > 1:  # two lines must fit in one row too
+        height = min(lines[0].letter_height, row_h * 0.8 / (1 + LINE_PITCH))
+        lines = [dotted_row(r.text, fmt.width - 2 * margin, height, fmt) for r in lines]
+    for i in range(ROWS):
+        top = margin + i * row_h
+        draw_label(page, lines, (margin, top, fmt.width - margin, top + row_h), fmt)
     return page
 
 
-def draw_trace(page: Image.Image, sheet: dict, picture: Image.Image | None, body: tuple[int, int, int, int]):
-    x0, y0, x1, y1 = body
-    h = y1 - y0
-    kind = sheet.get("kind")
-
-    def pic(top: float, bottom: float, width: float = 0.6):
-        if picture:
-            w = (x1 - x0) * width
-            cx = (x0 + x1) / 2
-            paste_fit(page, picture, (int(cx - w / 2), int(y0 + h * top), int(cx + w / 2), int(y0 + h * bottom)))
-
-    if kind == "letter":
-        letter = sheet["letter"]
-        pic(0, 0.34)
-        dotted_text(page, f"{letter}{letter.lower()}", (x0, int(y0 + h * 0.36), x1, int(y0 + h * 0.72)))
-        dotted_text(page, f"{letter} {letter.lower()} " * 2, (x0, int(y0 + h * 0.76), x1, y1))
-    elif kind == "number":
-        n = str(sheet["count"])
-        pic(0, 0.32, 0.92)
-        dotted_text(page, n, (x0, int(y0 + h * 0.36), x1, int(y0 + h * 0.72)))
-        dotted_text(page, " ".join([n] * 5), (x0, int(y0 + h * 0.78), x1, y1))
-    elif kind == "shape":
-        pic(0, 0.34)
-        top = y0 + h * 0.38
-        cell_h = (y1 - top) / 2
-        cell_w = (x1 - x0) / 2
-        for i in range(4):
-            cx, cy = x0 + (i % 2) * cell_w, top + (i // 2) * cell_h
-            pad = 30
-            dotted_shape(
-                page,
-                sheet.get("shape", "circle"),
-                (int(cx + pad), int(cy + pad), int(cx + cell_w - pad), int(cy + cell_h - pad)),
-            )
-    elif kind == "prewriting":
-        pic(0, 0.26, 0.5)
-        row = (y1 - (y0 + h * 0.3)) / 3
-        for i in range(3):
-            top = y0 + h * 0.3 + i * row
-            dotted_path(page, sheet.get("path", "wave"), (x0, int(top + 30), x1, int(top + row - 30)))
-    elif kind == "word":
-        word = str(sheet.get("word", "")).lower()[:10]
-        pic(0, 0.36)
-        dotted_text(page, word, (x0, int(y0 + h * 0.4), x1, int(y0 + h * 0.7)))
-        dotted_text(page, word, (x0 + 120, int(y0 + h * 0.76), x1 - 120, y1))
-    elif picture:
-        paste_fit(page, picture, body)
+def trace_image_page(fmt: PageFormat, text: str, picture: Image.Image | None) -> Image.Image:
+    """The dashed picture on top, one dotted label row below."""
+    margin = round(fmt.width * 0.06)
+    inner = fmt.width - 2 * margin
+    if fmt.thermal:
+        pic_h = inner  # a square picture, then as much paper as the label needs
+        lines = label_lines(text, inner, fmt.mm(7), fmt) if text else []
+        label_h = lines_height(lines) + fmt.mm(4) if lines else 0
+        height = max(fmt.height, round(margin + pic_h + label_h + margin))
+    else:
+        height = fmt.height
+        pic_h = round(height * 0.68) - margin
+        label_h = height - pic_h - 2 * margin
+        lines = label_lines(text, inner, label_h * 0.55, fmt) if text else []
+        if len(lines) > 1:
+            size = min(lines[0].letter_height, label_h * 0.75 / (1 + LINE_PITCH))
+            lines = [dotted_row(r.text, inner, size, fmt) for r in lines]
+    page = Image.new("L", (fmt.width, height), 255)
+    if picture:
+        dashed_picture(page, picture, (margin, margin, fmt.width - margin, margin + pic_h), fmt)
+    if lines:
+        draw_label(page, lines, (margin, margin + pic_h, fmt.width - margin, height - margin), fmt)
+    return page
 
 
-def to_png(page: Image.Image) -> bytes:
+def heavy_word(page: Image.Image, word: str, box: tuple[int, int, int, int]) -> int:
+    """The word in heavy, solid black capitals, centred at the bottom of box.
+    Returns the height it took."""
+    x0, y0, x1, y1 = box
+    draw = ImageDraw.Draw(page)
+    text = word.upper()
+    size = y1 - y0
+    while True:
+        f = font(size)
+        stroke = max(1, round(size * 0.05))
+        gap = stroke * 2 + round(size * 0.03)  # the thick strokes must not join the letters
+        widths = [text_width(draw, c, f, stroke) if c != " " else f.getlength(" ") for c in text]
+        total = sum(widths) + gap * (len(text) - 1)
+        if total <= x1 - x0 or size <= 10:
+            break
+        size -= 2
+    _, top, _, low = draw.textbbox((0, 0), "H", font=f, stroke_width=stroke)
+    x = x0 + ((x1 - x0) - total) / 2
+    y = y1 - (low - top) - top
+    for c, w in zip(text, widths, strict=True):
+        left = draw.textbbox((0, 0), c, font=f, stroke_width=stroke)[0] if c != " " else 0
+        draw.text((x - left, y), c, font=f, fill=0, stroke_width=stroke, stroke_fill=0)
+        x += w + gap
+    return low - top
+
+
+def coloring_page(fmt: PageFormat, word: str, picture: Image.Image | None, lang: str) -> Image.Image:
+    """A short instruction, the big coloring picture, then the word."""
+    page = Image.new("L", (fmt.width, fmt.height), 255)
+    draw = ImageDraw.Draw(page)
+    margin = round(fmt.width * 0.05)
+    inner = fmt.width - 2 * margin
+
+    small = font(round(max(fmt.mm(2.2), 11)))
+    y = margin
+    for line in wrap(draw, tr(lang, INSTRUCTION), small, inner)[:3]:
+        draw.text(((fmt.width - text_width(draw, line, small)) // 2, y), line, font=small, fill=0)
+        y += round(small.size * 1.25)
+    y += round(fmt.mm(1.5))
+
+    bottom = fmt.height - margin
+    if word:
+        used = heavy_word(page, word, (margin, bottom - round(fmt.height * 0.075), fmt.width - margin, bottom))
+        bottom -= used + round(fmt.mm(3))
+    if picture:
+        coloring_picture(page, picture, (margin, y, fmt.width - margin, bottom), fmt)
+    return page
+
+
+def test_page(fmt: PageFormat, lang: str) -> Image.Image:
+    page = Image.new("L", (fmt.width, fmt.height), 255)
+    draw = ImageDraw.Draw(page)
+    margin = round(fmt.width * 0.06)
+    inner = fmt.width - 2 * margin
+    y = margin
+    for text, share in ((tr(lang, "Test page"), 0.08), (tr(lang, "The printer is working!"), 0.045)):
+        size = round(fmt.width * share * 1.5)
+        while size > 8 and text_width(draw, text, font(size)) > inner:
+            size -= 2
+        draw.text(((fmt.width - text_width(draw, text, font(size))) // 2, y), text, font=font(size), fill=0)
+        y += round(size * 1.6)
+    # Gray steps: on a thermal roll these show the dithering.
+    step = inner // 4
+    for i, shade in enumerate((0, 64, 128, 192)):
+        draw.rectangle((margin + i * step + 4, y, margin + (i + 1) * step - 4, y + step - 8), fill=shade)
+    y += step + round(fmt.mm(3))
+    row = dotted_row("ABC", inner, fmt.height * 0.1, fmt)
+    draw_dotted_row(page, row, (margin, y, fmt.width - margin, y + fmt.height * 0.14), fmt)
+    y += round(fmt.height * 0.16)
+    circle = Image.new("L", (400, 400), 255)
+    ImageDraw.Draw(circle).ellipse((40, 40, 360, 360), outline=0, width=24)
+    dashed_picture(page, circle.convert("RGB"), (margin, y, fmt.width - margin, fmt.height - margin), fmt)
+    return page
+
+
+def render_page(req: PageRequest, image_bytes: bytes | None, fmt: PageFormat = INKJET) -> Image.Image:
+    """The finished page, as the child holds it: mode "L" for the inkjet,
+    mode "1" (dithered) for a thermal roll. A thermal page wider than the
+    roll is landscape; the thermal driver prints it sideways."""
+    lang = req.language if req.language in ("en", "fil") else "en"
+    if req.kind == "test":
+        page = test_page(fmt, lang)
+        return thermal_ready(page, photo=True) if fmt.thermal else page
+
+    picture = None
+    if image_bytes:
+        picture = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+
+    kind, en, fil = page_content(req)
+    if kind == "trace_word":
+        page = trace_word_page(fmt, bilingual(en, fil))
+    elif kind == "trace_image":
+        page = trace_image_page(fmt, bilingual(en, fil), picture)
+    else:
+        page = coloring_page(fmt, fil if lang == "fil" and fil else en, picture, lang)
+    return thermal_ready(page) if fmt.thermal else page
+
+
+def to_png(page: Image.Image, fmt: PageFormat = INKJET) -> bytes:
     out = io.BytesIO()
-    page.save(out, "PNG", dpi=(DPI, DPI))
+    page.save(out, "PNG", dpi=(fmt.dpi, fmt.dpi))
     return out.getvalue()
 
 

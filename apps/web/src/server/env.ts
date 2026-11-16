@@ -47,6 +47,10 @@ export const env = {
   GEMINI_API_KEY: opt(raw.GEMINI_API_KEY),
   DATA_DIR: path.resolve(raw.DATA_DIR),
   IMAGE_DIR: path.resolve(raw.DATA_DIR, 'images'),
+  // Page previews (the printed page as an image), made again when needed.
+  PAGE_DIR: path.resolve(raw.DATA_DIR, 'images', 'pages'),
+  // Files teachers send to the kiosk printer; deleted once printed or cancelled.
+  UPLOAD_DIR: path.resolve(raw.DATA_DIR, 'uploads'),
 };
 
 export const isProduction = env.NODE_ENV === 'production';

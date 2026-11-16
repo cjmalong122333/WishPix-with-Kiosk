@@ -1,23 +1,33 @@
 """Printer drivers.
 
 CupsPrinter talks to CUPS with its command-line tools (lp, lpstat, cancel,
-cupsenable), so no C library bindings are needed on the Raspberry Pi.
-MockPrinter stands in for it during development and practice: pages are
+cupsenable), so no C library bindings are needed on the Raspberry Pi. It
+drives the recommended inkjet.
+EscPosPrinter sends ESC/POS raster commands straight to an optional 58 mm
+thermal printer (USB device or network).
+MockPrinter stands in for both during development and practice: pages are
 saved as PNG files and faults can be simulated.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import re
+import select
 import shutil
+import socket
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
+from PIL import Image
+
 from .state import StateStore
+from .thermal import raster
 
 log = logging.getLogger("wishpix.hardware")
 
@@ -207,3 +217,113 @@ class CupsPrinter:
                 self._run(*cmd)
             except CupsError as err:
                 log.warning("%s failed: %s", cmd[0], err)
+
+
+# ---------- ESC/POS thermal printer (optional) ----------
+
+
+class EscPosPrinter:
+    """A 58 mm thermal printer that speaks ESC/POS, on USB (/dev/usb/lp0)
+    or the network (tcp://host:9100). Pages arrive already dithered."""
+
+    mode = "escpos"
+
+    def __init__(self, device: str, cut: bool, dots: int, dpi: int, mm_per_second: float):
+        self.device = device
+        self.name = f"Thermal printer ({device})"
+        self.cut = cut
+        self.dots = dots
+        self.dpi = dpi
+        self.speed = max(5.0, mm_per_second)
+        self._lock = threading.Lock()  # one conversation with the printer at a time
+        self._jobs: dict[str, float | None] = {}  # job -> when it is out (None = failed)
+        self._last = DriverStatus(problem=None, ink=None)
+        self._next = 1
+
+    def _tcp(self) -> tuple[str, int] | None:
+        if not self.device.startswith("tcp://"):
+            return None
+        host, _, port = self.device[6:].partition(":")
+        return host, int(port or 9100)
+
+    def _send(self, data: bytes, reply: bool = False) -> int | None:
+        """Writes data; with reply, waits up to 1.5 s for one status byte."""
+        address = self._tcp()
+        if address:
+            with socket.create_connection(address, timeout=5) as conn:
+                conn.sendall(data)
+                if not reply:
+                    return None
+                conn.settimeout(1.5)
+                try:
+                    got = conn.recv(1)
+                except TimeoutError:
+                    return None
+                return got[0] if got else None
+        if not os.path.exists(self.device):
+            raise OSError(f"{self.device} not found. Is the printer plugged in and on?")
+        fd = os.open(self.device, os.O_RDWR | getattr(os, "O_NONBLOCK", 0))
+        try:
+            view = memoryview(data)
+            while view:
+                try:
+                    view = view[os.write(fd, view) :]
+                except BlockingIOError:
+                    select.select([], [fd], [], 1.0)
+            if not reply:
+                return None
+            ready, _, _ = select.select([fd], [], [], 1.5)
+            if not ready:
+                return None
+            got = os.read(fd, 1)
+            return got[0] if got else None
+        finally:
+            os.close(fd)
+
+    def status(self) -> DriverStatus:
+        # Never ask in the middle of a page: the question would land inside the picture.
+        if not self._lock.acquire(blocking=False):
+            return self._last
+        try:
+            # DLE EOT 4: the paper sensor. Bits 5 and 6 = the roll is empty.
+            answer = self._send(b"\x10\x04\x04", reply=True)
+            problem = "no_paper" if answer is not None and answer & 0x60 else None
+            self._last = DriverStatus(problem=problem, ink=None)
+        except (OSError, ValueError) as err:
+            log.warning("thermal printer status: %s", err)
+            self._last = DriverStatus(problem="offline", ink=None)
+        finally:
+            self._lock.release()
+        return self._last
+
+    def submit(self, page: Path, colorful: bool) -> str:
+        img = Image.open(page)
+        if img.width > self.dots and img.height <= self.dots:
+            img = img.rotate(90, expand=True)  # a landscape page goes along the roll
+        if img.width != self.dots:
+            img = img.convert("L").resize((self.dots, max(1, round(img.height * self.dots / img.width))), Image.LANCZOS)
+        job_id = f"escpos-{self._next}"
+        self._next += 1
+        with self._lock:
+            try:
+                self._send(raster(img, self.cut))
+            except (OSError, ValueError) as err:
+                log.warning("thermal printer: %s", err)
+                self._jobs[job_id] = None
+                return job_id
+        length_mm = img.height / self.dpi * 25.4
+        self._jobs[job_id] = time.monotonic() + length_mm / self.speed + 1
+        return job_id
+
+    def job_state(self, job_id: str) -> JobState:
+        out_at = self._jobs.get(job_id)
+        if out_at is None:
+            return "failed"
+        return "done" if time.monotonic() >= out_at else "pending"
+
+    def cancel(self, job_id: str) -> None:
+        # What was sent is already printing; just stop waiting for it.
+        self._jobs[job_id] = None
+
+    def resume(self) -> None:
+        self._last = DriverStatus(problem=None, ink=None)

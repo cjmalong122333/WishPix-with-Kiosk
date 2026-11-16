@@ -4,28 +4,40 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  ArrowLeft, ArrowRight, Check, Cloud, Globe, Heart, Layers, Lock, Paintbrush, Palette, Pencil, Play, Plus, Settings, Shapes, ShieldCheck,
-  Smile, Sparkles, Stethoscope, X, Zap, type LucideIcon,
+  ArrowLeft, ArrowRight, Check, Cloud, Globe, Heart, Image as ImageIcon, Layers, Lock, Paintbrush, Palette, Pencil, Play, Plus, Settings, Shapes,
+  ShieldCheck, Smile, Sparkles, Stethoscope, Type, X, Zap, type LucideIcon,
 } from 'lucide-react';
 import { useT } from '@/i18n';
 import { api } from '@/lib/api';
-import { ACTIVITY_NAMES, SAFETY_NAMES, themeName } from '@/lib/labels';
+import { MODE_NAMES, SAFETY_NAMES, themeName } from '@/lib/labels';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useLive } from '@/components/teacher/auth';
 import { ErrorText, PageTitle, Panel, Tint, Warn, type TintName } from '@/components/teacher/ui';
 
-const STEPS = ['Activity', 'Theme', 'Safety', 'Start'];
+// Session Setup: what the kiosk does until the teacher ends the session.
+//   Trace & Learn:  Mode Preset -> Mode (Trace Word | Trace Image) -> Theme -> Safety -> Start
+//   Color & Create: Mode Preset -> Theme -> Safety -> Start (one output, so no Mode step)
+// In the database the mode preset is the session's activity_type and the mode
+// its activity_subtype (src/server/catalog.ts).
 
-const ACTIVITY_LOOK: Record<string, { icon: LucideIcon; tone: TintName }> = {
-  color_create: { icon: Palette, tone: 'blue' },
+type StepId = 'preset' | 'mode' | 'theme' | 'safety' | 'start';
+const STEP_NAMES: Record<StepId, string> = { preset: 'Activity Preset', mode: 'Mode', theme: 'Theme', safety: 'Safety', start: 'Start' };
+const stepsFor = (preset: string | null): StepId[] =>
+  preset === 'trace_learn' ? ['preset', 'mode', 'theme', 'safety', 'start'] : ['preset', 'theme', 'safety', 'start'];
+
+const PRESET_LOOK: Record<string, { icon: LucideIcon; tone: TintName }> = {
   trace_learn: { icon: Pencil, tone: 'purple' },
-  free_play: { icon: Sparkles, tone: 'green' },
+  color_create: { icon: Palette, tone: 'blue' },
+};
+const MODE_LOOK: Record<string, { icon: LucideIcon; tone: TintName }> = {
+  trace_word: { icon: Type, tone: 'purple' },
+  trace_image: { icon: ImageIcon, tone: 'green' },
 };
 
 const THEME_LOOK: Record<string, { icon: LucideIcon; tone: TintName }> = {
+  free_expression: { icon: Sparkles, tone: 'blue' },
   animals: { icon: Smile, tone: 'gray' },
   transportation: { icon: Zap, tone: 'orange' },
   fruits: { icon: Heart, tone: 'red' },
@@ -42,12 +54,13 @@ const SAFETY_LEVELS = [
 ];
 
 type Subtype = { id: string; name: string; description: string };
-type Activity = { id: string; name: string; description: string; subtypes: Subtype[] };
-type Catalog = { activities: Activity[]; themes: { id: string; name: string; examples: string[] }[]; languages: string[] };
+type Preset = { id: string; name: string; description: string; subtypes: Subtype[] };
+type Theme = { id: string; name: string; examples: string[]; recommended?: boolean };
+type Catalog = { activities: Preset[]; themes: Theme[]; languages: string[] };
 
 type Form = {
-  activityType: string | null;
-  activitySubtype: string | null;
+  activityType: string | null; // mode preset
+  activitySubtype: string | null; // mode
   theme: string | null;
   customTheme: string;
   safetyLevel: string;
@@ -56,19 +69,21 @@ type Form = {
   languages: string[];
 };
 
+const FREE_EXPRESSION = 'Free Expression';
+
 export default function SessionSetup() {
   const live = useLive();
   const t = useT();
   const router = useRouter();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [step, setStep] = useState(0);
-  const [picking, setPicking] = useState<Activity | null>(null); // activity whose sub-types are open
+  const [at, setAt] = useState<StepId>('preset');
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [form, setForm] = useState<Form>({
     activityType: null,
     activitySubtype: null,
-    theme: null,
+    // Free Expression is chosen until the teacher picks a theme.
+    theme: FREE_EXPRESSION,
     customTheme: '',
     safetyLevel: 'standard',
     blockedWords: [],
@@ -83,10 +98,23 @@ export default function SessionSetup() {
       .catch((e: Error) => setError(e.message));
   }, []);
 
-  const activity = catalog?.activities.find((a) => a.id === form.activityType);
-  const subtype = activity?.subtypes.find((s) => s.id === form.activitySubtype);
+  const steps = stepsFor(form.activityType);
+  const index = Math.max(0, steps.indexOf(at));
+  const preset = catalog?.activities.find((a) => a.id === form.activityType);
+  const mode = preset?.subtypes.find((s) => s.id === form.activitySubtype);
   const theme = form.theme === 'custom' ? form.customTheme.trim() : form.theme;
-  const canContinue = [!!subtype, !!theme, form.languages.length > 0, true][step];
+  const canContinue = { preset: !!preset, mode: !!mode, theme: !!theme, safety: form.languages.length > 0, start: true }[at];
+
+  const choosePreset = (p: Preset) => {
+    // Color & Create has one output, chosen here; Trace & Learn picks it in the next step.
+    const keep = form.activityType === p.id ? form.activitySubtype : null;
+    set({ activityType: p.id, activitySubtype: p.subtypes.length === 1 ? p.subtypes[0].id : keep });
+  };
+  const go = (step: StepId) => {
+    // The theme step always opens with a theme chosen: Free Expression by default.
+    if (step === 'theme' && !form.theme) set({ theme: FREE_EXPRESSION });
+    setAt(step);
+  };
 
   async function start() {
     setStarting(true);
@@ -115,67 +143,91 @@ export default function SessionSetup() {
   return (
     <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6">
       <div className="min-w-0">
-        <PageTitle title={t('Session Setup')} lead={t('Choose activity, theme and safety, then start.')} small>
-          <span className="shrink-0 rounded-full border border-[#c8dcff] bg-[#eaf2ff] px-2.5 py-1 text-xs font-bold text-blue-700">{t('Step {n} of 4', { n: step + 1 })}</span>
+        <PageTitle title={t('Session Setup')} lead={t('Choose an activity, theme and safety, then start.')} small>
+          <span className="shrink-0 rounded-full border border-[#c8dcff] bg-[#eaf2ff] px-2.5 py-1 text-xs font-bold text-blue-700">
+            {t('Step {n} of {total}', { n: index + 1, total: steps.length })}
+          </span>
         </PageTitle>
 
-        <ol className="mt-3.5 mb-4 flex list-none rounded-xl bg-[#e9eef5] p-1">
-          {STEPS.map((s, i) => (
-            <li key={s} className="flex-1">
+        <ol className="mt-3.5 mb-4 flex list-none rounded-xl bg-[#e9eef5] p-1" aria-label={t('Steps')}>
+          {steps.map((s, i) => (
+            <li key={s} className="min-w-0 flex-1">
               <button
                 className={cn(
                   'flex w-full items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent px-1 py-2 text-[13px] font-semibold text-slate-500 disabled:cursor-default',
-                  i === step && 'bg-white text-blue-accent shadow-sm',
-                  i < step && 'text-slate-600'
+                  i === index && 'bg-white text-blue-accent shadow-sm',
+                  i < index && 'text-slate-600'
                 )}
-                onClick={() => i < step && setStep(i)}
-                disabled={i > step}
+                onClick={() => i < index && go(s)}
+                disabled={i > index}
+                aria-current={i === index ? 'step' : undefined}
               >
                 <span
                   className={cn(
-                    'grid size-[18px] place-items-center rounded-full bg-[#d8dee8] text-[11px] font-bold text-slate-600',
-                    i === step && 'bg-blue-accent text-white',
-                    i < step && 'bg-[#22c55e] text-white'
+                    'grid size-[18px] shrink-0 place-items-center rounded-full bg-[#d8dee8] text-[11px] font-bold text-slate-600',
+                    i === index && 'bg-blue-accent text-white',
+                    i < index && 'bg-[#22c55e] text-white'
                   )}
                 >
-                  {i < step ? <Check size={12} strokeWidth={3} /> : i + 1}
+                  {i < index ? <Check size={12} strokeWidth={3} /> : i + 1}
                 </span>
-                {t(s)}
+                <span className="truncate">{t(STEP_NAMES[s])}</span>
               </button>
             </li>
           ))}
         </ol>
 
-        {step === 0 && (
-          <Section title={t('Activity Setup')} lead={t('Choose how children will use the kiosk.')}>
+        {at === 'preset' && (
+          <Section title={t('Choose an Activity')} lead={t('Choose how children will use the kiosk.')}>
             <div className="grid gap-3">
-              {catalog?.activities.map((a) => {
-                const { icon: Icon, tone } = ACTIVITY_LOOK[a.id];
-                const selected = a.id === form.activityType;
+              {catalog?.activities.map((p) => {
+                const { icon: Icon, tone } = PRESET_LOOK[p.id] ?? { icon: Layers, tone: 'gray' as const };
+                const selected = p.id === form.activityType;
                 return (
-                  <Option key={a.id} selected={selected} onClick={() => setPicking(a)}>
+                  <Option key={p.id} selected={selected} onClick={() => choosePreset(p)}>
                     <Tint tone={tone} size="lg">
                       <Icon />
                     </Tint>
                     <span className="min-w-0 flex-1">
-                      <b className="block text-[15px] text-foreground">{t(a.name)}</b>
-                      <small className="text-[13px] text-muted-foreground">{selected && subtype ? t(subtype.name) : t(a.description)}</small>
+                      <b className="block text-[15px] text-foreground">{t(p.name)}</b>
+                      <small className="text-[13px] text-muted-foreground">
+                        {t(p.description)}
+                        {p.subtypes.length > 1 && <> · {t('{n} modes', { n: p.subtypes.length })}</>}
+                      </small>
                     </span>
                     <Radio on={selected} />
                   </Option>
                 );
               })}
             </div>
-            {activity && (
-              <button className="mt-3.5 border-0 bg-transparent p-0 text-[13px] font-bold text-blue-700" onClick={() => setPicking(activity)}>
-                {t('Change activity type')}
-              </button>
-            )}
           </Section>
         )}
 
-        {step === 1 && (
-          <Section title={t('Theme Setup')} lead={t('Pick the learning topic. It is pushed to the kiosk when you start.')}>
+        {at === 'mode' && preset && (
+          <Section title={t('Select Mode')} lead={t('Choose what {preset} prints.', { preset: t(preset.name) })}>
+            <div className="grid gap-3 md:grid-cols-2">
+              {preset.subtypes.map((s) => {
+                const { icon: Icon, tone } = MODE_LOOK[s.id] ?? { icon: Layers, tone: 'gray' as const };
+                const selected = s.id === form.activitySubtype;
+                return (
+                  <Option key={s.id} selected={selected} onClick={() => set({ activitySubtype: s.id })}>
+                    <Tint tone={tone} size="lg">
+                      <Icon />
+                    </Tint>
+                    <span className="min-w-0 flex-1">
+                      <b className="block text-[15px] text-foreground">{t(s.name)}</b>
+                      <small className="text-[13px] text-muted-foreground">{t(s.description)}</small>
+                    </span>
+                    <Radio on={selected} />
+                  </Option>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {at === 'theme' && (
+          <Section title={t('Select Theme')} lead={t('Pick the learning topic. It is pushed to the kiosk when you start.')}>
             <div className="grid grid-cols-2 gap-2.5 rounded-2xl border bg-card p-2.5 md:grid-cols-3">
               {catalog?.themes.map((th) => {
                 const { icon: Icon, tone } = THEME_LOOK[th.id] ?? { icon: Layers, tone: 'gray' as const };
@@ -183,22 +235,37 @@ export default function SessionSetup() {
                 return (
                   <button
                     key={th.id}
-                    className={cn('flex min-w-0 flex-col gap-2.5 rounded-xl border bg-white p-3 text-left', selected && 'border-2 border-blue-accent p-[11px]')}
+                    aria-pressed={selected}
+                    className={cn(
+                      'relative flex min-w-0 flex-col gap-2.5 rounded-xl border bg-white p-3 text-left',
+                      // The recommended theme keeps its accent and badge even when another is chosen.
+                      th.recommended && 'col-span-2 border-[#9cc0f5] bg-[#f6f9ff] shadow-[0_0_0_4px_rgba(59,130,246,0.12)] md:col-span-3',
+                      selected && 'border-2 border-blue-accent p-[11px]'
+                    )}
                     onClick={() => set({ theme: th.name })}
                   >
-                    <span className="flex min-w-0 items-center gap-2 text-sm font-bold break-words text-foreground">
+                    {th.recommended && (
+                      <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-blue-accent px-2 py-0.5 text-[11px] font-bold text-white">
+                        <Sparkles size={11} /> {t('Recommended')}
+                      </span>
+                    )}
+                    <span className="flex min-w-0 items-center gap-2 pr-24 text-sm font-bold break-words text-foreground">
                       <Tint tone={tone} size="sm">
                         <Icon />
                       </Tint>
                       {t(th.name)}
                     </span>
-                    <span className="flex flex-wrap gap-1.5">
-                      {th.examples.map((e) => (
-                        <em key={e} className="rounded-md border px-2 py-0.5 text-[11px] text-slate-500 not-italic">
-                          {t(e)}
-                        </em>
-                      ))}
-                    </span>
+                    {th.recommended ? (
+                      <small className="text-[12px] text-muted-foreground">{t('No theme: children can ask for anything. The safety checks still apply.')}</small>
+                    ) : (
+                      <span className="flex flex-wrap gap-1.5">
+                        {th.examples.map((e) => (
+                          <em key={e} className="rounded-md border px-2 py-0.5 text-[11px] text-slate-500 not-italic">
+                            {t(e)}
+                          </em>
+                        ))}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -223,8 +290,8 @@ export default function SessionSetup() {
           </Section>
         )}
 
-        {step === 2 && (
-          <Section title={t('Safety Setup')} lead={t('Child Safe Mode decides what the kiosk will accept.')}>
+        {at === 'safety' && (
+          <Section title={t('Select Safety')} lead={t('Child Safe Mode decides what the kiosk will accept.')}>
             <div className="grid gap-3 rounded-t-2xl border border-b-0 bg-card p-3.5 md:grid-cols-3">
               {SAFETY_LEVELS.map(({ id, icon: Icon, tag, text }) => {
                 const selected = form.safetyLevel === id;
@@ -287,12 +354,13 @@ export default function SessionSetup() {
           </Section>
         )}
 
-        {step === 3 && (
+        {at === 'start' && (
           <Section title={t('Start Session')} lead={t('Review what will be sent to the kiosk.')}>
             <div className="grid gap-3 rounded-2xl border bg-card p-4">
-              <Review icon={<Palette />} tone="blue" label={t('Activity Type')} value={`${t(activity?.name ?? '')} - ${t(subtype?.name ?? '')}`} onEdit={() => setStep(0)} />
-              <Review icon={<Smile />} tone="gray" label={t('Theme')} value={themeName(theme, t)} onEdit={() => setStep(1)} />
-              <Review icon={<ShieldCheck />} tone="navy" label={t('Safety Rules')} value={t(SAFETY_NAMES[form.safetyLevel])} onEdit={() => setStep(2)} />
+              <Review icon={<Palette />} tone="blue" label={t('Mode Preset')} value={t(preset?.name ?? '')} onEdit={() => go('preset')} />
+              {steps.includes('mode') && <Review icon={<Type />} tone="purple" label={t('Mode')} value={t(mode?.name ?? '')} onEdit={() => go('mode')} />}
+              <Review icon={<Smile />} tone="gray" label={t('Theme')} value={themeName(theme, t)} onEdit={() => go('theme')} />
+              <Review icon={<ShieldCheck />} tone="navy" label={t('Safety Rules')} value={t(SAFETY_NAMES[form.safetyLevel])} onEdit={() => go('safety')} />
             </div>
             {!live?.kioskOnline && <Warn>{t('The kiosk is offline. You can start now; children can use it once the kiosk screen is on.')}</Warn>}
             {live?.session && <Warn>{t('Starting will end the current session ({theme}).', { theme: themeName(live.session.theme, t) })}</Warn>}
@@ -302,12 +370,12 @@ export default function SessionSetup() {
         {error && <ErrorText>{error}</ErrorText>}
 
         <div className="sticky bottom-0 z-[5] -mx-4 mt-4 flex justify-between gap-3 border-t bg-white/95 px-4 py-3.5 backdrop-blur lg:mx-0 lg:rounded-xl lg:border">
-          <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
+          <Button variant="outline" onClick={() => go(steps[index - 1])} disabled={index === 0}>
             <ArrowLeft /> {t('Back')}
           </Button>
-          {step < 3 ? (
-            <Button onClick={() => setStep((s) => s + 1)} disabled={!canContinue}>
-              {step === 2 ? t('Save Settings') : t('Continue')} <ArrowRight />
+          {at !== 'start' ? (
+            <Button onClick={() => go(steps[index + 1])} disabled={!canContinue}>
+              {at === 'safety' ? t('Save Settings') : t('Continue')} <ArrowRight />
             </Button>
           ) : (
             <Button className="bg-brand-700 hover:bg-brand-700/90" onClick={start} disabled={starting}>
@@ -318,56 +386,14 @@ export default function SessionSetup() {
       </div>
 
       <Summary
-        activity={activity && subtype ? [t(ACTIVITY_NAMES[activity.id]), t(subtype.name)] : null}
+        preset={preset ? t(MODE_NAMES[preset.id] ?? preset.name) : null}
+        mode={steps.includes('mode') && mode ? t(mode.name) : null}
         theme={themeName(theme, t)}
         safety={t(SAFETY_NAMES[form.safetyLevel])}
         languages={form.languages.map((l) => t(l))}
         kioskName={live?.kioskName}
         kioskOnline={live?.kioskOnline}
       />
-
-      <Dialog open={!!picking} onOpenChange={(open) => !open && setPicking(null)}>
-        <DialogContent className="sm:max-w-lg">
-          {picking && (
-            <>
-              <DialogHeader className="flex-row items-center gap-3 text-left">
-                <Tint tone={ACTIVITY_LOOK[picking.id].tone} size="lg">
-                  {(() => {
-                    const Icon = ACTIVITY_LOOK[picking.id].icon;
-                    return <Icon />;
-                  })()}
-                </Tint>
-                <div>
-                  <DialogTitle>{t(picking.name)}</DialogTitle>
-                  <DialogDescription>{t('Select Activity')}</DialogDescription>
-                </div>
-              </DialogHeader>
-              <div className="grid gap-2.5">
-                {picking.subtypes.map((s) => {
-                  const selected = form.activityType === picking.id && form.activitySubtype === s.id;
-                  return (
-                    <Option
-                      key={s.id}
-                      selected={selected}
-                      flat
-                      onClick={() => {
-                        set({ activityType: picking.id, activitySubtype: s.id });
-                        setPicking(null);
-                      }}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <b className="block text-[15px] text-foreground">{t(s.name)}</b>
-                        <small className="text-[13px] text-muted-foreground">{t(s.description)}</small>
-                      </span>
-                      <Radio on={selected} />
-                    </Option>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -382,14 +408,11 @@ function Section({ title, lead, children }: { title: string; lead: string; child
   );
 }
 
-function Option({ selected, onClick, children, flat }: { selected: boolean; onClick: () => void; children: React.ReactNode; flat?: boolean }) {
+function Option({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      className={cn(
-        'flex w-full items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left',
-        !flat && 'shadow-card',
-        selected && 'border-2 border-blue-accent bg-[#f6f9ff] p-[13px]'
-      )}
+      aria-pressed={selected}
+      className={cn('flex w-full items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left shadow-card', selected && 'border-2 border-blue-accent bg-[#f6f9ff] p-[13px]')}
       onClick={onClick}
     >
       {children}
@@ -470,12 +493,20 @@ function Review({ icon, tone, label, value, onEdit }: { icon: React.ReactNode; t
   );
 }
 
-type SummaryProps = { activity: [string, string] | null; theme: string; safety: string; languages: string[]; kioskName?: string; kioskOnline?: boolean };
+type SummaryProps = {
+  preset: string | null;
+  mode: string | null;
+  theme: string;
+  safety: string;
+  languages: string[];
+  kioskName?: string;
+  kioskOnline?: boolean;
+};
 
-function Summary({ activity, theme, safety, languages, kioskName, kioskOnline }: SummaryProps) {
+function Summary({ preset, mode, theme, safety, languages, kioskName, kioskOnline }: SummaryProps) {
   const t = useT();
   const rows: [LucideIcon, string, React.ReactNode][] = [
-    [Palette, t('Activity Type'), activity ? <>{activity[0]} - <small className="text-xs font-semibold">{activity[1]}</small></> : t('Not selected')],
+    [Palette, t('Activity'), preset ? <>{preset}{mode && <> - <small className="text-xs font-semibold">{mode}</small></>}</> : t('Not selected')],
     [Layers, t('Theme'), theme || t('Not selected')],
     [ShieldCheck, t('Safety Rules'), safety],
     [Globe, t('Languages'), languages.length ? languages.join(', ') : t('None')],

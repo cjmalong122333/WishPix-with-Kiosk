@@ -1,10 +1,11 @@
-import { cancelListening, heard, kioskNext, startListening, submitWish, wakeKiosk } from '@/server/kiosk';
+import { cancelListening, claimTeacherPrint, heard, kioskNext, startListening, submitWish, wakeKiosk } from '@/server/kiosk';
 import { body, fail, json, kioskRoute } from '@/server/http';
 
 const LANGS = ['en', 'fil', 'tl'];
 const reply = (r: { error: string } | { ok: true }) => ('error' in r ? fail(r.error, 409) : json(r));
 
-// What the child does at the kiosk: tap to talk, confirm the idea, finish.
+// What the child does at the kiosk: hold the talk button, confirm the idea,
+// finish. The screen's language and colors are Teacher App settings only.
 export const POST = kioskRoute<{ params: Promise<{ action: string }> }>(async (req, ctx) => {
   const b = await body(req);
   switch ((await ctx.params).action) {
@@ -24,6 +25,10 @@ export const POST = kioskRoute<{ params: Promise<{ action: string }> }>(async (r
     case 'touch':
       wakeKiosk();
       return json({ ok: true });
+    // Print to Kiosk: the screen is quiet (no child in the middle of a wish)
+    // and a teacher's file is waiting: print the next one.
+    case 'teacher-print':
+      return reply(await claimTeacherPrint());
     default:
       return fail('Unknown action.', 404);
   }

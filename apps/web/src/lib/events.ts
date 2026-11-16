@@ -6,9 +6,10 @@ import { ACTIVITY_NAMES } from './labels';
 const SIMULATED: Record<string, string> = { jam: 'paper jam', offline: 'printer off', low_paper: 'low paper', low_ink: 'low ink', no_ink: 'out of ink' };
 const REPORTS: Record<string, string> = { daily: 'Daily summary', session: 'Session report', safety: 'Safety report' };
 const SETTING_NAMES: Record<string, string> = {
-  language: 'language',
+  language: 'display language',
   volume: 'kiosk volume',
   theme_color: 'theme color',
+  kiosk_color: 'kiosk color',
   auto_sleep: 'auto-sleep',
   auto_sleep_minutes: 'auto-sleep time',
   auto_logout: 'auto sign-out',
@@ -38,6 +39,13 @@ export function eventText(e: LoggedEvent, t: T) {
     case 'moderation_override': return t('Overrode the filter: “{text}”', { text: String(d.text) });
     case 'print_reprint': return t('Sent a picture to print again');
     case 'print_retry': return t(d.count === 1 ? 'Sent 1 failed print to the printer' : 'Sent {n} failed prints to the printer', { n: Number(d.count) });
+    // Print to Kiosk (Teacher Print)
+    case 'print_teacher_send': return t('Teacher Print: sent “{file}” to the kiosk', { file: String(d.fileName) });
+    case 'print_teacher_cancel': return t('Teacher Print: cancelled a file');
+    case 'print_teacher_retry': return t('Teacher Print: sent a failed file again');
+    case 'print_teacher': return d.status === 'done'
+      ? t('Teacher Print: “{file}” printed', { file: String(d.fileName) })
+      : t('Teacher Print: “{file}” did not print ({problem})', { file: String(d.fileName), problem: t(String(d.problem ?? 'error')) });
     case 'printer_refill': return t('Refilled the paper');
     case 'printer_ink': return t('Replaced the ink');
     case 'printer_clear': return d.problem === 'jam' ? t('Cleared a paper jam') : d.problem === 'offline' ? t('Turned the printer on') : t('Cleared a printer problem');

@@ -2,10 +2,19 @@ import type { T } from '@/i18n';
 
 // Display names for values stored by the server, in English. Pass them
 // through t() to show them in the chosen language.
-export const ACTIVITY_NAMES: Record<string, string> = { color_create: 'Color & Create', trace_learn: 'Trace & Learn', free_play: 'Free Play' };
+// Modes (stored as a session's activity_type). Free Play was removed in
+// November 2026; its name stays so old sessions still read right in history,
+// reports and analytics.
+export const ACTIVITY_NAMES: Record<string, string> = { trace_learn: 'Trace & Learn', color_create: 'Color & Create', free_play: 'Free Play' };
+export const MODE_NAMES = ACTIVITY_NAMES;
 export const SAFETY_NAMES: Record<string, string> = { strict: 'STRICT', standard: 'STANDARD', custom: 'CUSTOM' };
 
+// Sub-modes (activity_subtype). The ones after the first three are from
+// sessions saved before November 2026.
 export const SUBTYPE_NAMES: Record<string, string> = {
+  trace_word: 'Trace Word',
+  trace_image: 'Trace Image',
+  coloring_page: 'Coloring Page',
   single_object: 'Single Object Coloring',
   scene: 'Scene Coloring',
   craft_cutout: 'Craft Cut-out',

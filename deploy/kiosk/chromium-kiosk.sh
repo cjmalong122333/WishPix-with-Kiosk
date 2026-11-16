@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opens the WishPix kiosk screen full screen on the Raspberry Pi touchscreen.
+# Opens the WishPix kiosk screen full screen on the Raspberry Pi's display.
 # Started by the desktop session (see labwc-autostart); waits for the web app.
 set -u
 
@@ -11,7 +11,7 @@ for _ in $(seq 1 90); do
   sleep 2
 done
 
-# Hide the mouse pointer on the touchscreen.
+# Hide the mouse pointer (children only use the three kiosk buttons).
 command -v unclutter >/dev/null && unclutter -idle 0.5 -root &
 
 BROWSER=$(command -v chromium || command -v chromium-browser)

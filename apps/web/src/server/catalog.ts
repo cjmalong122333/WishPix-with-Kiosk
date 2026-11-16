@@ -1,45 +1,41 @@
-// Activities, sub-types and themes the teacher can pick in Session Setup,
-// plus the prompt templates that turn a child's words into an image prompt.
+// The modes, sub-modes and themes the teacher picks in Session Setup, plus
+// the prompts that turn a child's words into an image prompt.
+//
+// In the database a mode is a session's activity_type (trace_learn,
+// color_create) and its sub-mode the activity_subtype. Sessions saved before
+// November 2026 can also have free_play (retired) and older sub-types
+// (letter, number, shape, prewriting, word, single_object, scene...); they are
+// only shown in history, reports and analytics (src/lib/labels.ts).
 
-export type ActivityType = 'color_create' | 'trace_learn' | 'free_play';
+import type { WordPair } from './words';
+
+export type ActivityType = 'trace_learn' | 'color_create';
 
 export const activities = [
   {
-    id: 'color_create',
-    name: 'Color & Create',
-    description: 'Child generates coloring pages.',
-    subtypes: [
-      { id: 'single_object', name: 'Single Object Coloring', description: 'One big, simple picture to color.' },
-      { id: 'scene', name: 'Scene Coloring', description: 'The object in a simple background.' },
-      { id: 'craft_cutout', name: 'Craft Cut-out', description: 'A mask or puppet with thick cut lines.' },
-      { id: 'coloring_card', name: 'Coloring Card', description: 'A card with a border, for special days.' },
-    ],
-  },
-  {
     id: 'trace_learn',
     name: 'Trace & Learn',
-    description: 'Child generates tracing worksheets.',
+    description: 'Tracing worksheets with dotted words.',
     subtypes: [
-      { id: 'letter', name: 'Letter Tracing', description: 'A dotted first letter, like A is for apple.' },
-      { id: 'number', name: 'Number Tracing & Counting', description: 'Count the pictures and trace the number.' },
-      { id: 'shape', name: 'Shape Tracing', description: 'Dotted circles, squares, triangles and more.' },
-      { id: 'prewriting', name: 'Pre-writing Lines', description: 'Zigzags, waves and loops to follow.' },
-      { id: 'word', name: 'Word Tracing', description: 'Trace the word, in English or Filipino.' },
+      { id: 'trace_word', name: 'Trace Word', description: 'The word in dotted letters, 4 rows, in English and Filipino. No picture.' },
+      { id: 'trace_image', name: 'Trace Image', description: 'A dashed picture to trace, with the dotted word below.' },
     ],
   },
   {
-    id: 'free_play',
-    name: 'Free Play',
-    description: 'Open generation.',
-    subtypes: [
-      { id: 'storybook', name: 'Storybook Picture', description: 'A colorful picture of anything they say.' },
-      { id: 'flashcard', name: 'Flashcard', description: 'One clear picture with its word.' },
-      { id: 'character', name: 'Character / Sticker', description: 'A cute character with a white border.' },
-    ],
+    id: 'color_create',
+    name: 'Color & Create',
+    description: 'A coloring page with the word below.',
+    // One output only, so Session Setup skips the "Select Mode" step.
+    subtypes: [{ id: 'coloring_page', name: 'Coloring Page', description: 'One big picture with thick outlines to color, and its word.' }],
   },
 ] as const;
 
+// Free Expression: no theme. The child can ask for anything (the safety
+// checks still apply). It is the default and recommended choice.
+export const FREE_EXPRESSION = 'Free Expression';
+
 export const themes = [
+  { id: 'free_expression', name: FREE_EXPRESSION, examples: ['Dinosaur', 'Rocket', 'Rainbow'], recommended: true },
   { id: 'animals', name: 'Animals', examples: ['Cat', 'Dog', 'Lion'] },
   { id: 'transportation', name: 'Transportation', examples: ['Car', 'Jeepney', 'Airplane'] },
   { id: 'fruits', name: 'Fruits', examples: ['Apple', 'Mango', 'Banana'] },
@@ -51,45 +47,21 @@ export const themes = [
 
 export const LANGUAGES = ['English', 'Filipino', 'Taglish'];
 
-const LINE_ART =
-  'black and white coloring book line art, outline only, thick clean black outlines, monochrome, no shading, no fill, plain white background, very simple for preschool children aged 3 to 5';
-const COLORFUL = 'bright friendly colors, cute cartoon style, simple shapes, child friendly, for preschool children';
+export const isFreeExpression = (theme: string | null | undefined) => !theme || theme === FREE_EXPRESSION;
 
+// Black on white only: the pages print in black and white (and on a thermal
+// roll, only black dots exist).
+const TRACE_IMAGE = 'simple cute cartoon, dashed outline only, no fill, no shading, solid black eyes, white background, chunky shapes, big head, simple body, few details';
+const COLORING = 'thick bold black outlines, white interior, no shading, no gray, white background';
+const NEGATIVE = 'color, colors, shading, gray, grayscale shading, gradient, shadow, photo, realistic, text, letters, words, watermark, signature, frame, border';
+
+// What is printed besides the picture. Letters are drawn by the hardware
+// service with a font, never by the AI, so they are always spelled right.
+export type PageKind = 'trace_word' | 'trace_image' | 'coloring';
 export type Sheet =
-  | { kind: 'letter'; letter: string; word: string }
-  | { kind: 'number'; count: number; word: string }
-  | { kind: 'shape'; shape: string; word: string }
-  | { kind: 'prewriting'; path: string; word: string }
-  | { kind: 'word'; word: string };
-
-type Template = (subject: string, sheet: Sheet | null) => string;
-
-// Trace & Learn sheets only get the picture from the AI; the dotted letters,
-// numbers and lines are drawn on top so they are always correct.
-const templates: Record<string, Record<string, Template>> = {
-  color_create: {
-    single_object: (s) => `coloring book page of a single ${s}, centered, large, ${LINE_ART}`,
-    scene: (s) => `coloring book page of ${s} in a simple scene with a few background details, ${LINE_ART}`,
-    craft_cutout: (s) => `printable paper craft cut-out mask of ${s}, thick bold cut lines, ${LINE_ART}`,
-    coloring_card: (s) => `greeting card coloring book page featuring ${s}, decorative simple border, ${LINE_ART}`,
-  },
-  trace_learn: {
-    letter: (s) => `one small simple ${s}, ${LINE_ART}`,
-    number: (s, sheet) => `exactly ${sheet?.kind === 'number' ? sheet.count : 3} identical simple ${s} in a row, ${LINE_ART}`,
-    shape: (s) => `one simple ${s}, ${LINE_ART}`,
-    prewriting: (s) => `one small simple ${s}, ${LINE_ART}`,
-    word: (s) => `one small simple ${s}, ${LINE_ART}`,
-  },
-  free_play: {
-    storybook: (s) => `storybook illustration of ${s}, ${COLORFUL}`,
-    flashcard: (s) => `flashcard picture of ${s}, single subject centered, plain white background, ${COLORFUL}`,
-    character: (s) => `cute sticker of ${s} with a thick white outline border, ${COLORFUL}`,
-  },
-};
-
-const NEGATIVE_LINE_ART =
-  'color, colors, shading, gray, grayscale shading, gradient, shadow, photo, realistic, text, letters, words, watermark, signature, frame';
-const NEGATIVE_COLORFUL = 'text, letters, words, watermark, signature, scary, dark, realistic photo';
+  | { kind: PageKind; en: string; fil: string }
+  // Saved before November 2026; still shown and reprinted (as Trace Image).
+  | { kind: 'letter' | 'number' | 'shape' | 'prewriting' | 'word'; word: string };
 
 export function findActivity(type: unknown, subtype: unknown) {
   const activity = activities.find((a) => a.id === type);
@@ -97,69 +69,31 @@ export function findActivity(type: unknown, subtype: unknown) {
   return activity && sub ? { activity, subtype: sub } : null;
 }
 
-const NUMBER_WORDS: Record<string, number> = {
-  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-  isa: 1, isang: 1, dalawa: 2, dalawang: 2, tatlo: 3, tatlong: 3, apat: 4, lima: 5, limang: 5,
-  anim: 6, pito: 7, pitong: 7, walo: 8, walong: 8, siyam: 9, sampu: 10, sampung: 10,
-};
-const FILLER = new Set(['a', 'an', 'the', 'some', 'ang', 'mga', 'ng', 'na', 'please', 'i', 'want', 'gusto', 'ko']);
-const SHAPES: Record<string, string> = {
-  circle: 'circle', bilog: 'circle', square: 'square', parisukat: 'square', triangle: 'triangle', tatsulok: 'triangle',
-  star: 'star', bituin: 'star', heart: 'heart', puso: 'heart',
-};
-const PATHS = ['zigzag', 'wave', 'loops', 'bumps'];
-
 export type SessionRules = {
   activityType: string;
   activitySubtype: string;
   theme: string;
 };
 
-// What gets drawn on the printed sheet for Trace & Learn. The AI image
-// never contains these, so letters and numbers always come out right.
-function buildSheet(session: SessionRules, words: string[]): Sheet | null {
-  if (session.activityType !== 'trace_learn') return null;
-  // The object is usually the last real word ("a big elephant", "malaking aso").
-  const content = words.filter((w) => !FILLER.has(w) && !(w in NUMBER_WORDS) && !/^\d+$/.test(w));
-  const objects = content.filter((w) => !(w in SHAPES));
-  const main = objects.at(-1) ?? content.at(-1) ?? words.at(-1) ?? 'apple';
-  switch (session.activitySubtype) {
-    case 'letter':
-      return { kind: 'letter', letter: main[0].toUpperCase(), word: main };
-    case 'number': {
-      const n = words.map((w) => NUMBER_WORDS[w] ?? Number(w)).find((x) => x >= 1 && x <= 10);
-      return { kind: 'number', count: n ?? 3, word: main };
-    }
-    case 'shape': {
-      const shape = words.map((w) => SHAPES[w]).find(Boolean) ?? 'circle';
-      return { kind: 'shape', shape, word: main };
-    }
-    case 'prewriting':
-      return { kind: 'prewriting', path: PATHS[Math.floor(Math.random() * PATHS.length)], word: main };
-    case 'word':
-      return { kind: 'word', word: main.slice(0, 10) };
-    default:
-      return null;
-  }
+// The page a session makes. Old sessions still running after an update
+// (letter tracing, Free Play...) get the closest new page.
+export function pageKind(session: SessionRules): PageKind {
+  if (session.activityType === 'trace_learn') return session.activitySubtype === 'trace_word' ? 'trace_word' : 'trace_image';
+  return 'coloring';
 }
 
-export type BuiltPrompt = { prompt: string; negative: string; sheet: Sheet | null; colorful: boolean };
+// needsImage: false for Trace Word, which is letters only (no AI picture).
+export type BuiltPrompt = { prompt: string; negative: string; sheet: Sheet; needsImage: boolean };
 
 // subject: the child's idea, already cleaned up (by the prompt enhancer when
-// it is available, otherwise the words as recognized).
-export function buildPrompt(session: SessionRules, childText: string): BuiltPrompt {
+// it is available, otherwise the words as recognized). word: the word for the page.
+export function buildPrompt(session: SessionRules, childText: string, word: WordPair): BuiltPrompt {
   const subject = childText.trim().replace(/[.!?]+$/, '').replace(/^(a|an|the)\s+/i, '');
-  const words = subject.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
-  const sheet = buildSheet(session, words);
-  const template = templates[session.activityType]?.[session.activitySubtype] ?? templates.free_play.storybook;
-  // Counting sheets draw the number themselves, so the picture gets just the object.
-  const pictureSubject = sheet?.kind === 'number' ? sheet.word : subject;
-  const themeHint = session.theme ? `, theme: ${session.theme}` : '';
-  const colorful = session.activityType === 'free_play';
-  return {
-    prompt: template(pictureSubject, sheet) + themeHint,
-    negative: colorful ? NEGATIVE_COLORFUL : NEGATIVE_LINE_ART,
-    sheet,
-    colorful,
-  };
+  const kind = pageKind(session);
+  const sheet: Sheet = { kind, en: word.en, fil: word.fil };
+  // Free Expression adds no theme: the child's idea is the whole prompt.
+  const theme = isFreeExpression(session.theme) ? '' : `, theme: ${session.theme}`;
+  if (kind === 'trace_word') return { prompt: '', negative: '', sheet, needsImage: false };
+  const prompt = kind === 'trace_image' ? `${subject}, ${TRACE_IMAGE}` : `coloring book page of ${subject}, one large subject filling the page, ${COLORING}`;
+  return { prompt: prompt + theme, negative: NEGATIVE, sheet, needsImage: true };
 }

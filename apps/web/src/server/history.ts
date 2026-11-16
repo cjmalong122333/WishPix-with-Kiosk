@@ -50,10 +50,15 @@ export async function printHistory(view: string | null) {
   return rows.map(toItem);
 }
 
+// printedToday and failed count children's pictures only; teacherToday is
+// the pages teachers printed today with Print to Kiosk ("Teacher Print"),
+// counted apart so they never mix with the children's.
 export function printSummary() {
-  return sqlOne<{ printedToday: number; failed: number }>(
+  return sqlOne<{ printedToday: number; failed: number; teacherToday: number }>(
     `SELECT COALESCE(SUM(print_status = 'printed' AND date(printed_at, 'localtime') = date('now', 'localtime')), 0) AS printedToday,
-            COALESCE(SUM(status = 'success' AND print_status = 'failed'), 0) AS failed
+            COALESCE(SUM(status = 'success' AND print_status = 'failed'), 0) AS failed,
+            (SELECT COALESCE(SUM(sheets_done), 0) FROM print_jobs
+              WHERE status = 'done' AND date(printed_at, 'localtime') = date('now', 'localtime')) AS teacherToday
      FROM requests`
   );
 }

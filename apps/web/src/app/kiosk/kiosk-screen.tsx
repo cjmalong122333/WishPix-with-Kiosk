@@ -2,8 +2,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { Kiosk } from '@/components/kiosk/kiosk';
-import type { KioskState } from '@/lib/types';
+import { Kiosk, type KioskDemo } from '@/components/kiosk/kiosk';
+import type { ScreenId } from '@/components/kiosk/screen-for';
+import type { KioskMode, KioskState } from '@/lib/types';
 
 export function KioskScreen() {
   return (
@@ -15,71 +16,114 @@ export function KioskScreen() {
 
 function WithDemo() {
   const params = useSearchParams();
-  return <Kiosk demo={demoState(params)} />;
+  return <Kiosk demo={demoFor(params)} />;
 }
 
-// Development only: fake kiosk states, to check each screen without making
-// a picture, e.g. /kiosk?demo=preview&activity=trace_learn&sheet=letter
-const SHEETS = {
-  letter: { kind: 'letter', letter: 'C', word: 'cat' },
-  number: { kind: 'number', count: 3, word: 'cat' },
-  shape: { kind: 'shape', shape: 'circle', word: 'cat' },
-  prewriting: { kind: 'prewriting', path: 'zigzag', word: 'cat' },
-  word: { kind: 'word', word: 'pusa' },
-} as const;
+// Development only: any kiosk screen without a session or a picture, e.g.
+//   /kiosk?screen=home&activity=trace_learn&lang=fil
+//   /kiosk?screen=printing&activity=trace_learn&mode=trace_word   (mode: trace_word | trace_image)
+//   /kiosk?screen=printing&img=/favicon.svg
+//   /kiosk?screen=printer&problem=jam
+//   /kiosk?screen=ready&message=1   (the "I didn't hear anything" note)
+//   /kiosk?screen=listening&getready=1   ("Get ready…" before the microphone opens)
+//   /kiosk?screen=teacher_print   ("Printing teacher's file…")
+//   /kiosk?screen=home&color=blue   (Kiosk Color: auto, purple, green, blue, orange, pink)
+// The screen stays put: buttons do nothing here and nothing is sent to the
+// server. The printed-page preview is drawn roughly (there is no real page).
+const SCREENS: Record<ScreenId, KioskMode> = {
+  starting: 'waiting',
+  offline: 'ready',
+  waiting: 'waiting',
+  connected: 'waiting',
+  ended: 'waiting',
+  paused: 'paused',
+  home: 'ready',
+  ready: 'ready',
+  listening: 'listening',
+  thinking: 'listening',
+  typing: 'listening',
+  heard: 'heard',
+  creating: 'generating',
+  printing: 'printing',
+  done: 'preview',
+  printer: 'preview',
+  blocked: 'blocked',
+  error: 'error',
+  teacher_print: 'teacher_print',
+};
 
-function demoState(params: URLSearchParams): KioskState | null {
-  const mode = params.get('demo');
-  if (process.env.NODE_ENV === 'production' || !mode) return null;
+function demoFor(params: URLSearchParams): KioskDemo | null {
+  const screen = params.get('screen') as ScreenId | null;
+  if (process.env.NODE_ENV === 'production' || !screen || !(screen in SCREENS)) return null;
+  const mode = SCREENS[screen];
   const activity = params.get('activity') ?? 'color_create';
-  const sheet = activity === 'trace_learn' ? SHEETS[(params.get('sheet') ?? 'letter') as keyof typeof SHEETS] : null;
-  return {
+  const subtype = activity === 'trace_learn' ? (params.get('mode') ?? 'trace_image') : 'coloring_page';
+  const kind = subtype === 'trace_word' ? 'trace_word' : subtype === 'trace_image' ? 'trace_image' : 'coloring';
+  const problem = screen === 'printer' ? (params.get('problem') ?? 'no_paper') : null;
+  const state: KioskState = {
     kioskName: 'Rainbow Room',
     kioskOnline: true,
-    mode: mode as KioskState['mode'],
+    mode,
     session:
-      mode === 'waiting'
+      mode === 'waiting' || mode === 'teacher_print'
         ? null
         : {
             id: 0,
-            theme: 'Animals',
+            theme: params.get('theme') ?? 'Free Expression',
             activity_type: activity,
-            activity_subtype: 'letter',
+            activity_subtype: subtype,
             safety_level: 'standard',
             languages: ['English', 'Filipino'],
             blocked_words: [],
             allowed_words: [],
-            status: 'active',
+            status: mode === 'paused' ? 'paused' : 'active',
             started_at: new Date().toISOString(),
           },
-    current: ['ready', 'waiting', 'paused'].includes(mode)
+    current: ['ready', 'waiting', 'paused', 'listening', 'teacher_print'].includes(mode)
       ? null
       : {
           id: 0,
           queueNumber: 1,
-          recognizedText: 'a happy cat',
+          recognizedText: params.get('wish') ?? 'big red dinosaur',
           language: 'en',
           status: 'success',
-          imageUrl: params.get('img') ?? '/favicon.svg',
-          sheet,
-          label: { en: 'Happy cat', fil: 'Masayang pusa' },
+          imageUrl: kind === 'trace_word' ? null : (params.get('img') ?? '/favicon.svg'),
+          sheet: { kind, en: 'dinosaur', fil: 'dinosauro' },
+          label: { en: 'Big red dinosaur', fil: 'Malaking pulang dinosauro' },
+          printProblem: problem ? 'Out of paper' : null,
         },
+    teacherPrint: { pending: 0, printing: mode === 'teacher_print' ? { id: 1, done: 1, total: 3 } : null },
     pendingModeration: 0,
-    screen: { sleeping: false, brightness: 100 },
+    screen: { sleeping: params.get('sleep') === '1', brightness: 100 },
     printer: {
       reachable: true,
       mode: 'mock',
       printerName: 'Simulated printer',
-      paper: 20,
+      format: '4x6',
+      paper: problem === 'no_paper' ? 0 : 20,
       capacity: 20,
       ink: 100,
-      problem: null,
+      problem,
       problemText: null,
       lowPaper: false,
       lowInk: false,
       printing: null,
       queue: [],
     },
-    prefs: { language: (params.get('lang') as 'en' | 'fil') ?? 'en', volume: 0, themeColor: 'deep_blue', autoLogout: false, autoLogoutMinutes: 30 },
+    teacher: screen === 'connected' ? { name: 'Teacher Ana', device: 'iPad' } : null,
+    prefs: {
+      language: (params.get('lang') as 'en' | 'fil') ?? 'en',
+      volume: 60,
+      themeColor: 'deep_blue',
+      kioskColor: params.get('color') ?? 'auto',
+      autoLogout: false,
+      autoLogoutMinutes: 30,
+    },
+  };
+  return {
+    state,
+    screen,
+    message: params.get('message') ? "I didn't hear anything. Try again!" : undefined,
+    getReady: params.get('getready') === '1',
   };
 }

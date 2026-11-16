@@ -24,9 +24,14 @@ const SIMULATIONS = [
   ['no_ink', 'Out of ink', 'Simulated: out of ink.'],
 ] as const;
 
-const JOB_NAMES: Record<string, string> = { child: 'Printing a child’s picture', reprint: 'Printing a reprint', test: 'Printing a test page' };
+const JOB_NAMES: Record<string, string> = {
+  child: 'Printing a child’s picture',
+  reprint: 'Printing a reprint',
+  test: 'Printing a test page',
+  file: 'Printing a teacher’s file',
+};
 
-type Data = { items: RequestItem[]; summary: { printedToday: number; failed: number } };
+type Data = { items: RequestItem[]; summary: { printedToday: number; failed: number; teacherToday: number } };
 type Act = (path: string, message: string | ((res: Record<string, unknown>) => string), body?: unknown) => Promise<void>;
 
 export default function PrintManagement() {
@@ -61,7 +66,7 @@ export default function PrintManagement() {
     <div>
       <PageTitle title={t('Print Management')} lead={t('The kiosk printer, its paper and ink, and every picture it has printed.')} small />
 
-      {printer && <PrinterCard printer={printer} printedToday={data?.summary.printedToday} act={act} />}
+      {printer && <PrinterCard printer={printer} printedToday={data?.summary.printedToday} teacherToday={data?.summary.teacherToday} act={act} />}
 
       {failed > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[#f6c9d2] bg-danger-bg px-4 py-3.5 text-sm text-slate-700">
@@ -121,8 +126,9 @@ export default function PrintManagement() {
                   onClick={() => setPreview(r)}
                   aria-label={t('Preview the page for {text}', { text: r.recognized_text })}
                 >
+                  {/* Trace Word pages have no picture: show the page itself. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={r.image_url ?? ''} alt="" className="size-full object-cover" />
+                  <img src={r.image_url ?? `/api/pages/${r.id}`} alt="" className="size-full object-cover" />
                   <Eye size={14} className="absolute right-[3px] bottom-[3px] box-content rounded bg-navy-900/70 p-0.5 text-white" />
                 </button>
                 <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
@@ -155,7 +161,7 @@ export default function PrintManagement() {
           </h2>
           <p className="mt-0.5 mb-3 text-[13px] text-muted-foreground">{t('The printer service is in practice mode. Give the pretend printer a problem to practise fixing it.')}</p>
           <div className="flex flex-wrap gap-2">
-            {SIMULATIONS.map(([id, label, done]) => (
+            {SIMULATIONS.filter(([id]) => printer.format !== '58mm' || !id.includes('ink')).map(([id, label, done]) => (
               <Button key={id} variant="outline" size="sm" onClick={() => act('/api/printer/simulate', t(done), { problem: id })}>
                 {t(label)}
               </Button>
@@ -198,8 +204,10 @@ export default function PrintManagement() {
   );
 }
 
-function PrinterCard({ printer, printedToday, act }: { printer: PrinterState; printedToday?: number; act: Act }) {
+function PrinterCard({ printer, printedToday, teacherToday, act }: { printer: PrinterState; printedToday?: number; teacherToday?: number; act: Act }) {
   const t = useT();
+  // An optional 58 mm thermal printer has a paper roll and no ink.
+  const thermal = printer.format === '58mm';
   const job = printer.printing;
   const status = printer.problem
     ? { tone: 'bad', text: t(PROBLEM_NAMES[printer.problem] ?? printer.problem) }
@@ -225,6 +233,7 @@ function PrinterCard({ printer, printedToday, act }: { printer: PrinterState; pr
         </div>
         <span className="text-right text-xs text-muted-foreground">
           <b className="block text-xl text-foreground">{printedToday ?? '–'}</b> {t('printed today')}
+          {!!teacherToday && <small className="block">{t('+ {n} Teacher Print', { n: teacherToday })}</small>}
         </span>
       </div>
       {printer.problem === 'service_down' && <p className="mt-3 mb-0 text-[13px] text-muted-foreground">{t('Start the WishPix hardware service on the kiosk, or restart the kiosk.')}</p>}
@@ -235,10 +244,13 @@ function PrinterCard({ printer, printedToday, act }: { printer: PrinterState; pr
           <Gauge
             icon={<FileText size={16} />}
             label={t('Paper')}
-            value={t('{n} of {max} sheets', { n: printer.paper, max: printer.capacity })}
+            value={thermal ? t('{n} of {max} pages left on the roll', { n: printer.paper, max: printer.capacity }) : t('{n} of {max} sheets', { n: printer.paper, max: printer.capacity })}
             percent={printer.capacity ? (printer.paper / printer.capacity) * 100 : 0}
             low={printer.lowPaper || printer.paper === 0}
           />
+          {thermal ? (
+            <p className="mt-3 mb-0 text-[13px] text-muted-foreground">{t('Thermal printer (58 mm roll): it has no ink.')}</p>
+          ) : (
           <Gauge
             icon={<Droplet size={16} />}
             label={t('Ink')}
@@ -246,6 +258,7 @@ function PrinterCard({ printer, printedToday, act }: { printer: PrinterState; pr
             percent={printer.ink ?? 0}
             low={printer.lowInk || printer.ink === 0}
           />
+          )}
         </>
       )}
 
@@ -263,9 +276,11 @@ function PrinterCard({ printer, printedToday, act }: { printer: PrinterState; pr
         <Button variant="outline" onClick={() => act('/api/printer/refill-paper', t('Paper tray filled.'))} disabled={!printer.reachable || printer.paper === printer.capacity}>
           <FileText /> {t('Refill paper')}
         </Button>
-        <Button variant="outline" onClick={() => act('/api/printer/replace-ink', t('New ink cartridge in.'))} disabled={!printer.reachable || printer.ink === 100}>
-          <Droplet /> {t('Replace ink')}
-        </Button>
+        {!thermal && (
+          <Button variant="outline" onClick={() => act('/api/printer/replace-ink', t('New ink cartridge in.'))} disabled={!printer.reachable || printer.ink === 100}>
+            <Droplet /> {t('Replace ink')}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => act('/api/printer/test', t('Printing a test page…'))} disabled={!!printer.problem}>
           <Printer /> {t('Test page')}
         </Button>

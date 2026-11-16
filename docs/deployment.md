@@ -10,6 +10,8 @@ keys, printer, security), see [going-live.md](going-live.md).
 - HP OfficeJet 250 Mobile (USB), 4R (4×6 in) matte inkjet sticker paper
 - USB omnidirectional microphone (on a USB extension, at the front of the kiosk)
 - Speaker on the 3.5 mm jack (e.g. Creative Pebble 2.0, powered from a separate USB charger)
+- Three arcade push buttons for the children (the screen is not used as a touchscreen):
+  **Yes** (green), **No** (purple) and **Talk** (held down while the child speaks)
 
 ## 1. Prepare the Raspberry Pi
 
@@ -52,6 +54,16 @@ tray holds; teachers press *Refill paper* after loading).
 
 Print a test page from **Teacher App → Print Management → Test page**.
 
+**Optional 58 mm thermal printer** instead of the inkjet: plug it in by USB (or put it
+on the network), then in the same `.env` set `PRINTER_MODE=escpos` and
+`ESCPOS_DEVICE=/dev/usb/lp0` (or `tcp://<printer-ip>:9100`), and restart
+`wishpix-hardware`. The `wishpix` user is in the `lp` group (`setup-pi.sh`), so it can
+write to `/dev/usb/lp0`. All the settings are in [going-live.md](going-live.md), "Optional:
+a 58 mm thermal printer".
+
+The hardware service draws PDF pages with `pypdfium2` (in `requirements.txt`; it has
+ready-made wheels for the Pi's 64-bit OS, so nothing needs compiling).
+
 ## 4. Microphone and speaker
 
 ```bash
@@ -61,7 +73,35 @@ sudo nano /etc/asound.conf
 arecord -d 3 test.wav && aplay test.wav
 ```
 
-## 5. AI services (optional)
+## 5. Kiosk buttons
+
+The kiosk screen listens for three keys (`apps/web/src/components/kiosk/use-kiosk-buttons.ts`):
+
+| Button | Key | Linux key code |
+|---|---|---|
+| Yes (green) | Enter | `KEY_ENTER` = 28 |
+| No (purple) | Escape | `KEY_ESC` = 1 |
+| Talk (hold) | Space | `KEY_SPACE` = 57 |
+
+Wire each button between a GPIO pin and ground (no resistor needed; the pin's pull-up is
+used), then turn the pins into keys with Raspberry Pi OS's `gpio-key` overlay. Add to
+`/boot/firmware/config.txt` (the pins below are an example; use the ones you wired) and
+reboot:
+
+```
+# WishPix kiosk buttons: Yes, No, Talk
+dtoverlay=gpio-key,gpio=17,active_low=1,gpio_pull=up,keycode=28,label="wishpix-yes"
+dtoverlay=gpio-key,gpio=27,active_low=1,gpio_pull=up,keycode=1,label="wishpix-no"
+dtoverlay=gpio-key,gpio=22,active_low=1,gpio_pull=up,keycode=57,label="wishpix-talk"
+```
+
+Check them with `sudo evtest` (pick the `wishpix-…` devices and press each button). A USB
+"arcade encoder" board that shows up as a keyboard works too, if it can send these keys.
+Without the buttons (for example on a laptop) the same keys on a keyboard work.
+
+To use other keys, change `BUTTON_KEYS` in `use-kiosk-buttons.ts` (and this table).
+
+## 6. AI services (optional)
 
 Edit `/opt/wishpix/apps/web/.env`, then `sudo systemctl restart wishpix-web`:
 
@@ -75,7 +115,7 @@ Model names can be changed there too (`OPENAI_MODEL`, `GEMINI_IMAGE_MODEL`,
 `ELEVENLABS_STT_MODEL`). **Kiosk Management → Services** in the Teacher App shows what
 is in use. Keep the `.env` files private: they hold the keys and the sign-in secret.
 
-## 6. Teachers
+## 7. Teachers
 
 Teachers open `http://<kiosk-ip>:3000/teacher` on the daycare Wi-Fi. Give the Pi a fixed
 address in the router so the link never changes. Optional: install nginx with
@@ -103,7 +143,9 @@ journalctl -u wishpix-hardware -f       # printer log
 
 | Problem | Check |
 |---|---|
-| Teacher App says the kiosk is offline | Is Chromium open on the touchscreen? `journalctl -u wishpix-web` |
+| Teacher App says the kiosk is offline | Is Chromium open on the kiosk screen? `journalctl -u wishpix-web` |
+| A kiosk button does nothing | `sudo evtest`: does the button send its key? Check the `dtoverlay=gpio-key` lines (section 5) |
+| Emoji show as empty boxes on the kiosk | `sudo apt install fonts-noto-color-emoji`, then restart Chromium |
 | "The printer service is not running" | `systemctl status wishpix-hardware` |
 | Prints fail with "The printer is turned off" | `lpstat -p` shows *disabled*? Fix the printer, then *Printer is fixed* in Print Management |
 | Kiosk never hears the child | `arecord -l`, `/etc/asound.conf`; Chromium policy file in place |

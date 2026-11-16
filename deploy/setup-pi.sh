@@ -5,7 +5,7 @@
 #   sudo ./deploy/setup-pi.sh
 #
 # It installs Node.js, Python, CUPS + HPLIP and Chromium, copies WishPix to
-# /opt/wishpix, builds it, creates the services and makes the touchscreen open
+# /opt/wishpix, builds it, creates the services and makes the screen open
 # the kiosk on boot. Safe to run again (existing .env files are kept).
 set -euo pipefail
 
@@ -21,7 +21,7 @@ apt-get update
 apt-get install -y ca-certificates curl git rsync sqlite3 \
   python3 python3-venv python3-pip \
   cups cups-ipp-utils printer-driver-hpcups hplip \
-  chromium unclutter fonts-dejavu-core \
+  chromium unclutter fonts-dejavu-core fonts-noto-color-emoji \
   build-essential
 
 if ! command -v node >/dev/null || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]]; then
@@ -102,5 +102,6 @@ cat <<EOF
     2. Check the microphone and speaker names with 'arecord -l' / 'aplay -l' and adjust /etc/asound.conf.
     3. Add API keys to $WEB/.env (optional, free fallbacks are used without them),
        then:  sudo systemctl restart wishpix-web
-    4. Reboot. The touchscreen opens the kiosk; teachers open http://$(hostname -I | awk '{print $1}'):3000/teacher
+    4. Wire the Yes, No and Talk buttons (docs/deployment.md, "Kiosk buttons").
+    5. Reboot. The screen opens the kiosk; teachers open http://$(hostname -I | awk '{print $1}'):3000/teacher
 EOF

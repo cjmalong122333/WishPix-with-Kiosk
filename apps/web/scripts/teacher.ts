@@ -52,6 +52,9 @@ async function main() {
       if ((await prisma.session.count({ where: { teacherId: teacher.id } })) > 0) {
         throw new Error('This teacher ran sessions that reports still use. Change their password instead of removing them.');
       }
+      if ((await prisma.printJob.count({ where: { createdBy: teacher.id } })) > 0) {
+        throw new Error('This teacher sent files to the kiosk (Print to Kiosk) that are still listed. Change their password instead of removing them.');
+      }
       await prisma.event.updateMany({ where: { teacherId: teacher.id }, data: { teacherId: null } });
       await prisma.teacher.delete({ where: { id: teacher.id } });
       console.log(`Removed ${username}.`);

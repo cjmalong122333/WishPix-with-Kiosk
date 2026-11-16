@@ -3,7 +3,7 @@ import http from 'node:http';
 import { parse } from 'node:url';
 import next from 'next';
 import { Server } from 'socket.io';
-import { bus, isLoopback, REMOTE_HEADER, ROOM } from './src/server/realtime.js';
+import { bus, deviceName, isLoopback, REMOTE_HEADER, ROOM } from './src/server/realtime.js';
 import { readCookie, verifyToken } from './src/server/auth-token.js';
 
 // WishPix server: Next.js (kiosk screen, Teacher App, API routes) plus the
@@ -44,7 +44,13 @@ io.use(async (socket, nextFn) => {
   const role = socket.handshake.auth?.role;
   const { headers, address } = socket.handshake;
   if (role === 'kiosk' && isLocalKiosk(headers, address)) return nextFn();
-  if (role === 'teacher' && (await verifyToken(readCookie(headers.cookie)))) return nextFn();
+  if (role === 'teacher') {
+    const claims = await verifyToken(readCookie(headers.cookie));
+    if (claims) {
+      socket.data.teacherId = claims.teacherId;
+      return nextFn();
+    }
+  }
   nextFn(new Error('Not allowed'));
 });
 
@@ -60,6 +66,17 @@ io.on('connection', (socket) => {
     });
   } else {
     socket.join(ROOM.teachers);
+    // The kiosk's "Connected" screen shows who has the Teacher App open.
+    bus.teacherSockets.set(socket.id, {
+      teacherId: Number(socket.data.teacherId),
+      device: deviceName(socket.handshake.headers['user-agent']),
+      since: Date.now(),
+    });
+    bus.hooks.teachersChanged?.();
+    socket.on('disconnect', () => {
+      bus.teacherSockets.delete(socket.id);
+      bus.hooks.teachersChanged?.();
+    });
   }
   // Each screen loads the full state over HTTP right after connecting.
   socket.emit('hello');

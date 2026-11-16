@@ -2,7 +2,9 @@
 
 Runs next to the web app on the Raspberry Pi and owns the printer. The web
 app sends each finished picture here; this service lays out the page and
-prints it through CUPS (or saves it, in mock mode). It listens on
+prints it through CUPS (the inkjet, recommended), ESC/POS (an optional 58 mm
+thermal printer), or saves it in mock mode. It also prints the files a
+teacher sends (PNG, JPG, PDF) and draws previews of both. It listens on
 127.0.0.1 only; set HARDWARE_TOKEN to also require a shared secret.
 """
 
@@ -15,12 +17,14 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from .config import get_settings
-from .layout import PageRequest, font_in_use
+from .files import MAX_FILE_BYTES, FileError, detect, file_page, page_count, parse_pages
+from .layout import PageRequest, font_in_use, render_page, to_png
 from .service import PrintService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -53,7 +57,13 @@ Service = Annotated[PrintService, Depends(service)]
 
 @app.get("/health")
 def health(svc: Service):
-    return {"ok": True, "mode": svc.driver.mode, "printer": svc.driver.name, "font": font_in_use()}
+    return {
+        "ok": True,
+        "mode": svc.driver.mode,
+        "printer": svc.driver.name,
+        "format": svc.format.id,
+        "font": font_in_use(),
+    }
 
 
 @app.get("/printer", dependencies=[Auth])
@@ -68,14 +78,11 @@ class JobMeta(BaseModel):
     theme: str | None = None
     sheet: dict | None = None
     label: str | None = None
-    caption: str | None = None
-    colorful: bool = False
     language: str = "en"
     date: datetime | None = None
 
 
-@app.post("/jobs", dependencies=[Auth])
-async def create_job(svc: Service, meta: Annotated[str, Form()], image: Annotated[UploadFile | None, File()] = None):
+async def page_request(meta: str, image: UploadFile | None) -> tuple[JobMeta, PageRequest, bytes | None]:
     try:
         m = JobMeta.model_validate(json.loads(meta))
     except ValueError as err:
@@ -83,7 +90,8 @@ async def create_job(svc: Service, meta: Annotated[str, Form()], image: Annotate
     data = await image.read(MAX_IMAGE_BYTES + 1) if image else None
     if data is not None and len(data) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="The picture is too large.")
-    if m.kind != "test" and not data:
+    # Trace Word pages are letters only; every other child's page needs its picture.
+    if m.kind != "test" and not data and (m.sheet or {}).get("kind") != "trace_word":
         raise HTTPException(status_code=422, detail="A picture is needed.")
     page = PageRequest(
         kind=m.kind,
@@ -91,13 +99,29 @@ async def create_job(svc: Service, meta: Annotated[str, Form()], image: Annotate
         theme=m.theme,
         sheet=m.sheet,
         label=m.label,
-        caption=m.caption,
-        colorful=m.colorful,
         language=m.language,
         date=(m.date.astimezone() if m.date else datetime.now()),
     )
+    return m, page, data
+
+
+def png(img, svc: PrintService) -> Response:
+    return Response(to_png(img, svc.format), media_type="image/png")
+
+
+@app.post("/jobs", dependencies=[Auth])
+async def create_job(svc: Service, meta: Annotated[str, Form()], image: Annotated[UploadFile | None, File()] = None):
+    m, page, data = await page_request(meta, image)
     job = svc.submit(page, data, m.requestId)
     return {"jobId": job.id}
+
+
+@app.post("/render", dependencies=[Auth])
+async def render(svc: Service, meta: Annotated[str, Form()], image: Annotated[UploadFile | None, File()] = None):
+    """The page exactly as it would print (same code, same printer format), for previews."""
+    _, page, data = await page_request(meta, image)
+    img = await run_in_threadpool(render_page, page, data, svc.format)
+    return png(img, svc)
 
 
 @app.get("/jobs/{job_id}", dependencies=[Auth])
@@ -105,7 +129,58 @@ def job_status(job_id: str, svc: Service):
     job = svc.jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Unknown job.")
-    return {"status": job.status, "problem": job.problem}
+    return {"status": job.status, "problem": job.problem, "done": job.done, "total": job.total}
+
+
+# ---------- Teacher files (Print to Kiosk) ----------
+
+
+async def read_file(file: UploadFile) -> tuple[bytes, str]:
+    data = await file.read(MAX_FILE_BYTES + 1)
+    if len(data) > MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="The file is too large.")
+    try:
+        return data, detect(data)
+    except FileError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
+
+
+@app.post("/files/inspect", dependencies=[Auth])
+async def inspect_file(file: Annotated[UploadFile, File()]):
+    data, kind = await read_file(file)
+    try:
+        pages = await run_in_threadpool(page_count, data, kind)
+    except FileError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
+    return {"type": kind, "pages": pages}
+
+
+@app.post("/files/preview", dependencies=[Auth])
+async def preview_file(svc: Service, file: Annotated[UploadFile, File()], page: Annotated[int, Form(ge=1)] = 1):
+    """One page of the file as it will print (1-based page number)."""
+    data, kind = await read_file(file)
+    try:
+        img = await run_in_threadpool(file_page, data, kind, page - 1, svc.format)
+    except FileError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
+    return png(img, svc)
+
+
+@app.post("/files/jobs", dependencies=[Auth])
+async def print_file(
+    svc: Service,
+    file: Annotated[UploadFile, File()],
+    pages: Annotated[str, Form()] = "all",
+    copies: Annotated[int, Form(ge=1, le=10)] = 1,
+):
+    data, kind = await read_file(file)
+    try:
+        count = await run_in_threadpool(page_count, data, kind)
+        chosen = parse_pages(pages, count)
+    except FileError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from err
+    job = svc.submit_file(data, kind, chosen, copies)
+    return {"jobId": job.id, "total": job.total}
 
 
 @app.get("/jobs/{job_id}/page", dependencies=[Auth])

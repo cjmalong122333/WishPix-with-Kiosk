@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  BarChart3, Bell, Clock, FileText, LayoutGrid, LogOut, Menu, Monitor, Printer, Server, Settings, ShieldCheck, SlidersHorizontal, X, Zap,
+  BarChart3, Bell, Clock, FileText, LayoutGrid, LogOut, Menu, Monitor, Printer, Send, Server, Settings, ShieldCheck, SlidersHorizontal, X, Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { useT } from '@/i18n';
@@ -28,6 +28,7 @@ const NAV: { section: string; items: Item[] }[] = [
   {
     section: 'Hardware',
     items: [
+      { to: 'print-to-kiosk', label: 'Print to Kiosk', icon: Send, badge: (s) => s?.teacherPrint?.pending || null },
       { to: 'print', label: 'Print Management', icon: Printer, badge: (s) => (s?.printer?.problem ? '!' : null) },
       { to: 'kiosk', label: 'Kiosk Management', icon: Server, badge: (s) => (s && !s.kioskOnline ? '!' : null) },
     ],

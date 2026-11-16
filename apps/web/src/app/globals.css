@@ -91,6 +91,83 @@ html[data-theme='orange'] { --accent-color: #ea580c; --side-bg: #7c2d12; }
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --shadow-card: 0 1px 2px rgba(15, 27, 45, 0.04), 0 4px 16px rgba(15, 27, 45, 0.06);
+
+  /* Kiosk screen (see the block "Kiosk screen" below). */
+  --font-kiosk: var(--font-nunito), 'Nunito', system-ui, sans-serif;
+  --color-k-bg: var(--k-bg);
+  --color-k-ink: var(--k-ink);
+  --color-k-muted: var(--k-muted);
+  --color-k-purple: var(--k-purple);
+  --color-k-purple-soft: var(--k-purple-soft);
+  --color-k-purple-line: var(--k-purple-line);
+  --color-k-purple-mid: var(--k-purple-mid);
+  --color-k-green: var(--k-green);
+  --color-k-green-ink: var(--k-green-ink);
+  --color-k-mint: var(--k-mint);
+  --color-k-mint-ink: var(--k-mint-ink);
+  --color-k-teal: var(--k-teal);
+  --color-k-brown: var(--k-brown);
+  --color-k-warn: var(--k-warn);
+  --color-k-warn-ink: var(--k-warn-ink);
+  --color-k-gold: var(--k-gold);
+  --color-k-border: var(--k-border);
+  --color-k-accent: var(--k-accent);
+  --color-k-accent-soft: var(--k-accent-soft);
+}
+
+/* ---------- Kiosk screen ----------
+   Colors from the kiosk design (docs/design/kiosk, 1280x800 frames). The page
+   scales as one picture: 1rem is 10 px of the design, and the 128rem x 80rem
+   stage is as big as the screen allows (src/components/kiosk/kiosk.tsx). */
+html:has([data-kiosk]) {
+  font-size: min(calc(100vw / 128), calc(100dvh / 80));
+}
+[data-kiosk] {
+  --k-bg: #f8f6ff;
+  --k-ink: #302344;
+  --k-muted: #756b86;
+  --k-purple: #7950d5;
+  --k-purple-soft: #eee6fc;
+  --k-purple-line: #e5daf5;
+  --k-purple-mid: #ba9ae9;
+  --k-green: #16845f;
+  --k-green-ink: #126d4e;
+  --k-mint: #ddf5ed;
+  --k-mint-ink: #36725e;
+  --k-teal: #287c64;
+  --k-brown: #92601e;
+  --k-warn: #fff0da;
+  --k-warn-ink: #8a5d25;
+  --k-gold: #c18a27;
+  --k-border: #e7ddf2;
+  /* Each mode has its own color on its start screen. */
+  --k-accent: var(--k-purple);
+  --k-accent-soft: #eee3fd;
+}
+[data-kiosk][data-activity='trace_learn'] { --k-accent: var(--k-teal); --k-accent-soft: #ddf3e9; }
+[data-kiosk][data-tint='trace_learn'] { --k-bg: #f1fbf7; }
+
+/* Kiosk Color (Teacher App > Settings). "auto" sets no data-color and keeps
+   the design's colors above; any other choice recolors the whole kiosk, in
+   every mode. The main color carries white text, so each one keeps at least
+   4.5:1 contrast with white. These come after the mode rules so they win. */
+[data-kiosk][data-color] { --k-accent: var(--k-purple); }
+[data-kiosk][data-color='purple'] { --k-accent-soft: #eee3fd; --k-bg: #f8f6ff; }
+[data-kiosk][data-color='green'] {
+  --k-purple: #237159; --k-purple-soft: #ddf3e9; --k-purple-line: #cdeadd; --k-purple-mid: #8cc9b0;
+  --k-accent-soft: #ddf3e9; --k-bg: #f1fbf7; --k-border: #d5ece2;
+}
+[data-kiosk][data-color='blue'] {
+  --k-purple: #2a63c2; --k-purple-soft: #e3edfc; --k-purple-line: #d3e2f8; --k-purple-mid: #93b6ec;
+  --k-accent-soft: #e3edfc; --k-bg: #f4f8ff; --k-border: #dbe6f6;
+}
+[data-kiosk][data-color='orange'] {
+  --k-purple: #a8530f; --k-purple-soft: #fdebdc; --k-purple-line: #f6dcc6; --k-purple-mid: #eaa877;
+  --k-accent-soft: #fdebdc; --k-bg: #fff8f1; --k-border: #f2e1d2;
+}
+[data-kiosk][data-color='pink'] {
+  --k-purple: #b8356f; --k-purple-soft: #fbe3ef; --k-purple-line: #f3d2e2; --k-purple-mid: #e595bb;
+  --k-accent-soft: #fbe3ef; --k-bg: #fff5f9; --k-border: #f1dbe6;
 }
 
 @layer base {
@@ -103,26 +180,29 @@ html[data-theme='orange'] { --accent-color: #ea580c; --side-bg: #7c2d12; }
 @theme {
   --animate-k-in: k-in 0.45s ease-out;
   --animate-k-drop: k-drop 0.6s ease-out;
-  --animate-k-paper: k-paper 4.2s ease-in-out forwards;
   --animate-float: float 3.5s ease-in-out infinite;
   --animate-ring: ring 1.8s ease-out infinite;
   --animate-blink: blink 0.8s steps(2) infinite;
   --animate-step-pulse: step-pulse 1.4s ease-in-out infinite;
   --animate-sleep-pulse: sleep-pulse 3s ease-in-out infinite;
-  --animate-level: level 0.15s linear;
+  --animate-k-dot: k-dot 1.2s ease-in-out infinite;
+  --animate-k-twinkle: k-twinkle 2.4s ease-in-out infinite;
+  --animate-k-glow: k-glow 1.6s ease-in-out infinite;
+  --animate-k-wave: k-wave 1.1s ease-in-out infinite;
+
+  @keyframes k-dot { 0%, 60%, 100% { opacity: 0.35; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1); } }
+  @keyframes k-twinkle { 50% { transform: scale(0.75) rotate(12deg); opacity: 0.55; } }
+  @keyframes k-glow { 50% { box-shadow: 0 0 0 1.2rem rgba(22, 132, 95, 0.14); } }
+  @keyframes k-wave { 50% { transform: scaleY(0.45); } }
 
   @keyframes k-in { from { opacity: 0; transform: translateY(16px); } }
   @keyframes k-drop { from { transform: translateY(-30px) rotate(-2deg); opacity: 0; } }
-  @keyframes k-paper { from { transform: translateY(-100%); } to { transform: translateY(0); } }
   @keyframes float { 50% { transform: translateY(-10px); } }
   @keyframes ring { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.6); opacity: 0; } }
   @keyframes blink { 50% { opacity: 0.2; } }
   @keyframes step-pulse { 50% { box-shadow: 0 0 0 10px rgba(29, 107, 255, 0.15); } }
   @keyframes sleep-pulse { 50% { opacity: 0.35; } }
 }
-
-.art-spin path:first-of-type { transform-origin: 100px 100px; animation: spin 2.4s linear infinite; }
-.art-ring { transform-origin: 100px 100px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

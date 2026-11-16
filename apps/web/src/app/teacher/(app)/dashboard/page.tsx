@@ -115,7 +115,7 @@ export default function Dashboard() {
         </button>
       </SectionHead>
       <Stats>
-        <Stat label={t('Total Activities')} value={summary?.sessionsToday} note={t('Sessions run today')} icon={<Layers />} tone="blue" />
+        <Stat label={t('Total Sessions')} value={summary?.sessionsToday} note={t('Sessions run today')} icon={<Layers />} tone="blue" />
         <Stat
           label={t('Total Prints')}
           value={summary?.printsToday}
@@ -151,7 +151,7 @@ export default function Dashboard() {
         </span>
         <span className="flex-1">
           <b className="block text-[17px]">{session ? t('Start New Session') : t('Start Session')}</b>
-          <small className="text-[13px] text-white/85">{t('Set up activity, theme and safety')}</small>
+          <small className="text-[13px] text-white/85">{t('Set up mode, theme and safety')}</small>
         </span>
         <ChevronRight size={20} />
       </button>
@@ -167,9 +167,9 @@ export default function Dashboard() {
 
       <NoticeBar
         icon={<Sparkles size={16} className="text-[#d4a017]" />}
-        text={session ? t('Next: watch the children in Live Session.') : t('Next: decide which activity to run.')}
+        text={session ? t('Next: watch the children in Live Session.') : t('Next: decide which mode to run.')}
         href={session ? '/teacher/live' : '/teacher/setup'}
-        link={session ? t('Live session') : t('Plan activity')}
+        link={session ? t('Live session') : t('Choose a mode')}
       />
       {confirmDialog}
     </div>

@@ -61,7 +61,7 @@ export async function logRequests({ range, status, q, limit = 30, offset = 0 }: 
 
 const CSV_COLUMNS = [
   ['local_time', 'Time'], ['session_id', 'Session'], ['queue_number', 'Child #'], ['recognized_text', 'Said'],
-  ['language', 'Language'], ['activity_type', 'Activity'], ['activity_subtype', 'Activity type'], ['theme', 'Theme'],
+  ['language', 'Language'], ['activity_type', 'Mode preset'], ['activity_subtype', 'Mode'], ['theme', 'Theme'],
   ['safety_level', 'Safety level'], ['status', 'Status'], ['block_category', 'Blocked for'], ['block_match', 'Blocked word'],
   ['moderation_status', 'Teacher review'], ['print_status', 'Print'], ['reprint_count', 'Reprints'],
 ] as const;

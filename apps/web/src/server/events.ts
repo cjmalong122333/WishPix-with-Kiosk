@@ -7,7 +7,7 @@ export type EventType =
   | 'login' | 'logout'
   | 'session_start' | 'session_pause' | 'session_resume' | 'session_end'
   | 'moderation_keep' | 'moderation_override'
-  | 'print_reprint' | 'print_retry' | 'printer_refill' | 'printer_ink' | 'printer_clear' | 'printer_test' | 'printer_simulate'
+  | 'print_reprint' | 'print_retry' | 'print_teacher_send' | 'print_teacher' | 'print_teacher_cancel' | 'print_teacher_retry' | 'printer_refill' | 'printer_ink' | 'printer_clear' | 'printer_test' | 'printer_simulate'
   | 'kiosk_restart' | 'kiosk_sleep' | 'kiosk_wake' | 'kiosk_rename'
   | 'settings_change' | 'password_change' | 'profile_change' | 'report_create';
 

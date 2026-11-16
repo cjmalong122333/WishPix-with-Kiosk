@@ -1,7 +1,7 @@
 [project]
 name = "wishpix-hardware"
 version = "1.0.0"
-description = "WishPix kiosk hardware service: page layout and printing through CUPS."
+description = "WishPix kiosk hardware service: page layout and printing (CUPS inkjet or ESC/POS thermal)."
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115",
@@ -11,6 +11,7 @@ dependencies = [
   "pillow>=11.0",
   "opencv-python-headless>=4.10",
   "numpy>=2.0",
+  "pypdfium2>=4.30",
 ]
 
 [project.optional-dependencies]

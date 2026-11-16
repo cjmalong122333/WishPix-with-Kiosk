@@ -8,6 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run build --prefix apps/web",
     "test": "node scripts/test.mjs",
+    "e2e": "node scripts/kiosk-e2e.mjs",
     "lint": "npm run lint --prefix apps/web && npm run typecheck --prefix apps/web"
   },
   "engines": {

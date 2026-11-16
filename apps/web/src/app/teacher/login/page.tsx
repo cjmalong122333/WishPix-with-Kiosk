@@ -44,7 +44,7 @@ export default function LoginPage() {
     <WelcomeShell>
       <form className="w-full max-w-[440px] rounded-2xl bg-navy-800 p-6 text-left text-white shadow-[0_16px_40px_rgba(11,31,58,0.3)]" onSubmit={submit} noValidate>
         <h2 className="mb-2.5 text-[22px] font-bold">{t('Welcome back')}</h2>
-        <p className="mb-3.5 text-sm text-[#c3cfe0]">{t('Sign in to run activities on your daycare kiosk.')}</p>
+        <p className="mb-3.5 text-sm text-[#c3cfe0]">{t('Sign in to run sessions on your daycare kiosk.')}</p>
         {idleMinutes && (
           <p className="mb-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-[#c3cfe0]" role="status">
             {t('You were signed out after {n} minutes without activity.', { n: idleMinutes })}

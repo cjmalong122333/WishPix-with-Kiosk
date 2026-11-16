@@ -1,7 +1,7 @@
 import type { Session } from '@/generated/prisma/client';
 import { describeError } from './errors';
 import { prisma } from './db';
-import { buildPrompt, type Sheet } from './catalog';
+import { buildPrompt, FREE_EXPRESSION, isFreeExpression, pageKind, type Sheet } from './catalog';
 import { checkSafety, CATEGORIES } from './safety';
 import { generateImage } from './ai/image';
 import { moderate, openaiAvailable, processWish } from './ai/openai';
@@ -11,17 +11,21 @@ import { getSetting, screenPrefs, setSetting } from './settings';
 import { logEvent } from './events';
 import { parseJson } from './json';
 import { bus, ROOM } from './realtime';
+import * as teacherPrint from './teacher-print';
+import { tidyWord, wordPair, type WordPair } from './words';
 
 // The kiosk runtime. Modes, in the order a normal request moves through them:
 //   waiting (no session) -> ready (big microphone button) -> listening
 //   -> heard (child confirms what the kiosk understood) -> processing
 //   -> generating -> printing -> preview -> ready.
-// Side modes: blocked, error, paused. The screen can also be asleep in any
-// quiet mode (waiting, ready, paused); a touch or the teacher wakes it.
+// Side modes: blocked, error, paused, teacher_print (a file a teacher sent
+// is printing; only starts while no child is in the middle of a wish). The
+// screen can also be asleep in any quiet mode (waiting, ready, paused); a
+// touch or the teacher wakes it.
 
 export type KioskMode =
   | 'waiting' | 'ready' | 'listening' | 'heard' | 'processing' | 'generating'
-  | 'printing' | 'preview' | 'blocked' | 'error' | 'paused';
+  | 'printing' | 'preview' | 'blocked' | 'error' | 'paused' | 'teacher_print';
 
 export type SessionView = {
   id: number;
@@ -42,12 +46,16 @@ export type Current = {
   recognizedText: string;
   language: string | null;
   status: string;
-  imageUrl: string | null;
+  imageUrl: string | null; // the AI picture (none for Trace Word)
+  pageUrl?: string | null; // the page as it prints (/api/pages/<id>)
   sheet?: Sheet | null;
   label?: { en: string; fil: string } | null;
   override?: boolean;
   printProblem?: string | null;
 };
+
+// A teacher's file printing on the kiosk (Print to Kiosk).
+export type TeacherPrint = { id: number; done: number; total: number };
 
 type Runtime = {
   ready: Promise<void> | null;
@@ -55,6 +63,7 @@ type Runtime = {
   session: SessionView | null;
   current: Current | null;
   overrides: number[]; // request ids a teacher overrode, waiting for the kiosk to be free
+  teacherPrint: TeacherPrint | null;
   sleeping: boolean;
   lastActivity: number;
   connectedAt: string | null; // when the kiosk screen connected, for uptime
@@ -68,11 +77,13 @@ const rt: Runtime = (g.__wishpixKiosk ??= {
   session: null,
   current: null,
   overrides: [],
+  teacherPrint: null,
   sleeping: false,
   lastActivity: Date.now(),
   connectedAt: null,
   idleTimer: null,
 });
+rt.teacherPrint ??= null; // a runtime kept from before this field existed (development reloads)
 
 const KIOSK_ID = 1;
 const BLOCKED_SCREEN_MS = 6000;
@@ -118,9 +129,12 @@ export function ensureRuntime() {
     }
     // A request that was mid-way when the server stopped can't finish.
     await prisma.request.updateMany({ where: { status: { in: ['processing', 'generating'] } }, data: { status: 'failed' } });
+    // Neither can a teacher's file that was printing.
+    await teacherPrint.recoverJobs();
 
     bus.hooks.kioskConnected = () => void kioskConnectionChanged(true);
     bus.hooks.kioskDisconnected = () => void kioskConnectionChanged(false);
+    bus.hooks.teachersChanged = () => void broadcast();
     printer.onPrinterChange(() => void broadcast());
     printer.startPrinterPolling();
     setInterval(() => void autoSleep(), 30_000).unref();
@@ -137,13 +151,25 @@ export async function currentSession() {
   return rt.session;
 }
 
+// The teacher who opened the Teacher App most recently, while it is open:
+// their name and device, for the kiosk's "Connected" screen.
+async function connectedTeacher(): Promise<{ name: string; device: string } | null> {
+  let latest: { teacherId: number; device: string; since: number } | null = null;
+  for (const t of bus.teacherSockets.values()) if (!latest || t.since > latest.since) latest = t;
+  if (!latest) return null;
+  const user = await prisma.teacher.findUnique({ where: { id: latest.teacherId }, select: { displayName: true } });
+  return user ? { name: user.displayName, device: latest.device } : null;
+}
+
 export async function publicState() {
   await ensureRuntime();
-  const [kiosk, pending, prefs, brightness] = await Promise.all([
+  const [kiosk, pending, prefs, brightness, teacher, teacherPrints] = await Promise.all([
     prisma.kiosk.findUnique({ where: { id: KIOSK_ID } }),
     pendingCount(),
     screenPrefs(),
     getSetting('kiosk_brightness'),
+    connectedTeacher(),
+    teacherPrint.pendingJobs(),
   ]);
   return {
     kioskName: kiosk?.name ?? 'Kiosk',
@@ -151,9 +177,12 @@ export async function publicState() {
     mode: rt.mode,
     session: rt.session,
     current: rt.current,
+    // Print to Kiosk: files waiting for a quiet moment, and the one printing now.
+    teacherPrint: { pending: teacherPrints, printing: rt.teacherPrint },
     pendingModeration: pending,
     screen: { sleeping: rt.sleeping, brightness: Number(brightness ?? 100) },
     printer: printer.printerState(),
+    teacher,
     prefs,
   };
 }
@@ -197,9 +226,20 @@ async function kioskConnectionChanged(connected: boolean) {
   await broadcast();
 }
 
-// "Test sound" on the Settings page.
-export function playSound(name: string) {
-  bus.io?.to(ROOM.kiosk).emit('kiosk:sound', name);
+// "Test sound" on the Settings page. Each open kiosk screen answers whether
+// it played the sound (SoundResult in src/components/kiosk/sounds.ts); no
+// answers means no kiosk screen is open.
+export type SoundAnswer = { played: boolean; reason?: string };
+
+export function playSound(name: string): Promise<SoundAnswer[]> {
+  const io = bus.io;
+  if (!io) return Promise.resolve([]);
+  return new Promise((resolve) => {
+    // A screen that does not answer in time (an old page) is left out.
+    io.to(ROOM.kiosk)
+      .timeout(3000)
+      .emit('kiosk:sound', name, (_err: unknown, answers: SoundAnswer[]) => resolve(Array.isArray(answers) ? answers : []));
+  });
 }
 
 export function restartKiosk() {
@@ -401,13 +441,15 @@ async function runPipeline(id: number, queueNumber: number, text: string, langua
   //    down the wish still goes ahead on the word filter's decision.
   let subject = text;
   let label: Current['label'] = null;
+  // The word printed on the page; the built-in word list unless OpenAI picks it.
+  let word: WordPair = wordPair(text);
   if (openaiAvailable()) {
     try {
       const [mod, wish] = await Promise.all([
         override ? Promise.resolve({ flagged: false as const }) : moderate(text),
         processWish(text, {
           activity: `${session.activity_type}/${session.activity_subtype}`,
-          theme: session.theme,
+          theme: isFreeExpression(session.theme) ? `none (${FREE_EXPRESSION}: any idea is fine)` : session.theme,
           strict: session.safety_level === 'strict',
           language: SPEECH_NAMES[language ?? ''] ?? 'unknown',
         }),
@@ -421,50 +463,58 @@ async function runPipeline(id: number, queueNumber: number, text: string, langua
       }
       subject = wish.subject || text;
       label = wish.label_en ? { en: wish.label_en, fil: wish.label_fil || wish.label_en } : null;
+      const en = tidyWord(wish.word_en);
+      if (en) word = { en, fil: tidyWord(wish.word_fil) };
     } catch (err) {
       console.error(`[kiosk] OpenAI step failed for request ${id}, using the word filter only:`, describeError(err));
     }
   }
 
-  // 3. The picture.
-  const built = buildPrompt(rulesOf(session), subject);
+  // 3. The picture (Trace Word pages are letters only: no picture to make).
+  const built = buildPrompt(rulesOf(session), subject, word);
   await updateRequest(id, {
     status: 'generating',
-    finalPrompt: built.prompt,
-    sheet: built.sheet ? JSON.stringify(built.sheet) : null,
+    finalPrompt: built.prompt || null,
+    sheet: JSON.stringify(built.sheet),
     labelEn: label?.en ?? null,
     labelFil: label?.fil ?? null,
   });
   setMode('generating', { ...current, status: 'generating', label });
 
-  let image;
-  try {
-    image = await generateImage(built, id);
-  } catch (err) {
-    console.error(`[kiosk] request ${id} failed:`, describeError(err));
-    await updateRequest(id, { status: 'failed' });
-    setMode('error', { ...current, status: 'failed' });
-    setTimeout(() => backToReady(id), ERROR_SCREEN_MS);
-    return;
+  let image: { file: string; provider: string } | null = null;
+  if (built.needsImage) {
+    try {
+      image = await generateImage(built, id);
+    } catch (err) {
+      console.error(`[kiosk] request ${id} failed:`, describeError(err));
+      await updateRequest(id, { status: 'failed' });
+      setMode('error', { ...current, status: 'failed' });
+      setTimeout(() => backToReady(id), ERROR_SCREEN_MS);
+      return;
+    }
   }
 
-  await updateRequest(id, { status: 'success', imageFile: image.file, imageProvider: image.provider, generatedAt: new Date() });
-  const shown: Current = { ...current, status: 'success', imageUrl: `/images/${image.file}`, sheet: built.sheet, label };
+  await updateRequest(id, { status: 'success', imageFile: image?.file ?? null, imageProvider: image?.provider ?? null, generatedAt: new Date() });
+  const shown: Current = {
+    ...current,
+    status: 'success',
+    imageUrl: image ? `/images/${image.file}` : null,
+    pageUrl: pageUrl(id),
+    sheet: built.sheet,
+    label,
+  };
   setMode('printing', shown);
 
-  // 4. The printed page. The child still sees the picture on screen if the
-  //    printer has a problem; the teacher reprints it later.
+  // 4. The printed page. The child still sees it on screen if the printer
+  //    has a problem; the teacher reprints it later.
   const prefs = await screenPrefs();
   const problem = await printer.print({
     requestId: id,
     kind: 'child',
-    imageFile: image.file,
-    colorful: built.colorful,
+    imageFile: image?.file ?? null,
     activityType: session.activity_type,
     theme: session.theme,
     sheet: built.sheet,
-    label: label ? (prefs.language === 'fil' ? label.fil : label.en) : null,
-    caption: session.activity_type === 'free_play' ? text : null,
     language: prefs.language,
   });
   await updateRequest(id, problem ? { printStatus: 'failed', printError: problem } : { printStatus: 'printed', printedAt: new Date(), printError: null });
@@ -473,7 +523,7 @@ async function runPipeline(id: number, queueNumber: number, text: string, langua
   } else void broadcast();
 }
 
-// The kiosk calls this when the preview times out or the child taps "Done".
+// The kiosk calls this when "Worksheet ready" times out or the child presses Yes.
 export async function kioskNext(id: number) {
   await ensureRuntime();
   if (rt.mode === 'preview' && rt.current?.id === id) backToReady(id);
@@ -483,6 +533,50 @@ function backToReady(id: number) {
   if (rt.current?.id !== id) return;
   setMode(readyMode(), null);
   runNextOverride();
+}
+
+// The printed page as an image (src/app/api/pages/[id]/route.ts). The query
+// only tells the browser to fetch it again when the language or paper changes.
+export function pageUrl(id: number, language?: string) {
+  return `/api/pages/${id}?v=${language ?? ''}${printer.printerState().format ?? ''}`;
+}
+
+// ---------- Print to Kiosk (a teacher's file) ----------
+
+// The kiosk screen calls this when no child is in the middle of a wish (it
+// shows its start screen, or there is no session) and files are waiting.
+// The child's turn is never interrupted: a busy kiosk just says no.
+export async function claimTeacherPrint(): Promise<Result> {
+  await ensureRuntime();
+  if (rt.teacherPrint || !QUIET_MODES.includes(rt.mode)) return { error: 'The kiosk is busy. Please wait a moment.' };
+  const job = await teacherPrint.takeNextJob();
+  if (!job) return { ok: true };
+  // The printer can't print: tell the teacher now instead of showing the children a print that won't come.
+  const problem = printer.problem();
+  if (problem) {
+    await teacherPrint.failJob(job.id, problem);
+    await logEvent('print_teacher', { jobId: job.id, fileName: job.fileName, status: 'failed', problem: printer.PROBLEMS[problem] ?? problem });
+    await broadcast();
+    return { ok: true };
+  }
+  rt.teacherPrint = { id: job.id, done: 0, total: job.sheetsTotal };
+  setMode('teacher_print', null);
+  void (async () => {
+    await teacherPrint.runJob(job, (done, total) => {
+      if (rt.teacherPrint?.id !== job.id) return;
+      rt.teacherPrint = { id: job.id, done, total };
+      void broadcast();
+    });
+    const row = await prisma.printJob.findUnique({ where: { id: job.id }, select: { status: true, errorMessage: true, sheetsDone: true } });
+    await logEvent('print_teacher', { jobId: job.id, fileName: job.fileName, status: row?.status, sheets: row?.sheetsDone, problem: row?.errorMessage ?? undefined });
+  })()
+    .catch((err) => console.error('[kiosk] teacher print error:', describeError(err)))
+    .finally(() => {
+      rt.teacherPrint = null;
+      setMode(readyMode(), null);
+      runNextOverride();
+    });
+  return { ok: true };
 }
 
 // ---------- Moderation (teacher) ----------
@@ -526,23 +620,31 @@ function runNextOverride() {
 
 // ---------- Printing (Print Management) ----------
 
-async function printRequest(id: number, kind: 'reprint') {
+// What the hardware service needs to lay out a finished request's page, in
+// today's display language. Pages saved before November 2026 (no words on
+// the sheet, Free Play) print as the closest new page.
+export async function pageJob(id: number, kind: 'child' | 'reprint'): Promise<printer.PrintJob | null> {
   const row = await prisma.request.findUnique({ where: { id }, include: { session: true } });
-  if (!row || row.status !== 'success' || !row.imageFile) return null;
+  if (!row || row.status !== 'success') return null;
+  const saved = parseJson<Sheet | null>(row.sheet, null);
+  const rules = { activityType: row.session.activityType, activitySubtype: row.session.activitySubtype, theme: row.session.theme };
+  const sheet: Sheet = saved && 'en' in saved ? saved : { kind: pageKind(rules), ...wordPair(row.recognizedText) };
+  if (!row.imageFile && sheet.kind !== 'trace_word') return null;
   const prefs = await screenPrefs();
-  const label = prefs.language === 'fil' ? row.labelFil : row.labelEn;
-  return printer.print({
+  return {
     requestId: id,
     kind,
     imageFile: row.imageFile,
-    colorful: row.session.activityType === 'free_play',
     activityType: row.session.activityType,
     theme: row.session.theme,
-    sheet: parseJson<Sheet | null>(row.sheet, null),
-    label,
-    caption: row.session.activityType === 'free_play' ? row.recognizedText : null,
+    sheet,
     language: prefs.language,
-  });
+  };
+}
+
+async function printRequest(id: number, kind: 'reprint') {
+  const job = await pageJob(id, kind);
+  return job ? printer.print(job) : null;
 }
 
 const fixFirst = (p: string) => `${printer.PROBLEMS[p] ?? p}. Fix the printer first.`;

@@ -23,7 +23,7 @@ const Config = z.object({
 
 export const POST = teacherRoute(async (req, teacher) => {
   const b = await body(req);
-  if (!findActivity(b.activityType, b.activitySubtype)) return fail('Choose an activity.');
+  if (!findActivity(b.activityType, b.activitySubtype)) return fail('Choose a mode.');
   const parsed = Config.safeParse(b);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? 'Check the session settings.');
   const config = { ...parsed.data, blockedWords: parsed.data.blockedWords.filter(Boolean), allowedWords: parsed.data.allowedWords.filter(Boolean) };

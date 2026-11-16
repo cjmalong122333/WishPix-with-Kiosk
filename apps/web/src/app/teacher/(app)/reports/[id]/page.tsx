@@ -62,7 +62,7 @@ export default function ReportView({ params }: { params: Promise<{ id: string }>
     else
       downloadCsv(
         name,
-        [t('Session'), t('Theme'), t('Activity'), t('Started'), t('Requests'), t('Pictures made')],
+        [t('Session'), t('Theme'), t('Mode'), t('Started'), t('Requests'), t('Pictures made')],
         data.sessions.map((s) => [s.id, themeName(s.theme, t), activityName(s, t), at(s.started_at), s.requests, s.pictures])
       );
   }
@@ -114,7 +114,7 @@ function DailyReport({ data, at }: { data: ReportData; at: At }) {
       <StatsView data={data} printable />
       <ChartCard title={t('Sessions that day')} empty={!data.sessions.length}>
         <DataTable
-          head={[t('Session'), t('Theme'), t('Activity'), t('Started'), t('Requests'), t('Pictures made')]}
+          head={[t('Session'), t('Theme'), t('Mode'), t('Started'), t('Requests'), t('Pictures made')]}
           rows={data.sessions.map((s) => [`#${s.id}`, themeName(s.theme, t), `${activityName(s, t)} · ${subtypeName(s.activity_subtype, t)}`, at(s.started_at), s.requests, s.pictures])}
         />
       </ChartCard>
@@ -130,7 +130,7 @@ function SessionReport({ data, at, requestRows, madeAt }: { data: ReportData; at
   const start = toDate(s.started_at)!;
   const totals = data.totals;
   const facts: [string, React.ReactNode][] = [
-    [t('Activity'), `${activityName({ activity_type: String(s.activity_type) }, t)} · ${subtypeName(String(s.activity_subtype), t)}`],
+    [t('Mode'), `${activityName({ activity_type: String(s.activity_type) }, t)} · ${subtypeName(String(s.activity_subtype), t)}`],
     [t('Theme'), themeName(String(s.theme), t)],
     [t('Safety Rules'), t(SAFETY_NAMES[String(s.safety_level)])],
     [t('Languages'), s.languages.map((l) => t(l)).join(', ')],

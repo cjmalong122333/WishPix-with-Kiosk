@@ -2,23 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// Records the child's voice from the kiosk microphone. Stops on its own
-// after a short silence once the child has spoken, or after MAX_MS. The
-// recording stays in the browser's memory until it is sent to be turned into
-// text; it is never saved.
+// Records the child's voice from the kiosk microphone while the talk button
+// is held down: stop() is called when it is let go. MAX_MS is a safety limit
+// for a button that stays down. The recording stays in the browser's memory
+// until it is sent to be turned into text; it is never saved.
 
-const MAX_MS = 10_000;
-const SILENCE_MS = 1_600;
+const MAX_MS = 15_000;
 const SPEECH_LEVEL = 0.06; // loudness (0..1) that counts as talking
 
 export type Recording = { blob: Blob; spoke: boolean };
 
 export function useRecorder() {
   const [recording, setRecording] = useState(false);
-  const [level, setLevel] = useState(0);
+  // Microphone loudness 0..1, updated every frame. A ref, not state, so the
+  // kiosk is not re-rendered 60 times a second; read it in an animation frame.
+  const level = useRef(0);
   const stopRef = useRef<(() => void) | null>(null);
+  // stop() came before the microphone was open (a very short press).
+  const stopEarly = useRef(false);
 
   const start = useCallback(async (): Promise<Recording> => {
+    stopEarly.current = false;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
     });
@@ -35,7 +39,6 @@ export function useRecorder() {
 
     return new Promise<Recording>((resolve, reject) => {
       let spoke = false;
-      let lastLoud = performance.now();
       const began = performance.now();
       let frame = 0;
 
@@ -49,13 +52,9 @@ export function useRecorder() {
         let sum = 0;
         for (const s of samples) sum += s * s;
         const rms = Math.min(1, Math.sqrt(sum / samples.length) * 4);
-        setLevel(rms);
-        const now = performance.now();
-        if (rms > SPEECH_LEVEL) {
-          spoke = true;
-          lastLoud = now;
-        }
-        if ((spoke && now - lastLoud > SILENCE_MS) || now - began > MAX_MS) finish();
+        level.current = rms;
+        if (rms > SPEECH_LEVEL) spoke = true;
+        if (performance.now() - began > MAX_MS) finish();
         else frame = requestAnimationFrame(tick);
       };
 
@@ -64,8 +63,8 @@ export function useRecorder() {
         stream.getTracks().forEach((t) => t.stop());
         void ctx.close();
         stopRef.current = null;
+        level.current = 0;
         setRecording(false);
-        setLevel(0);
         resolve({ blob: new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }), spoke });
       };
       recorder.onerror = (e) => reject((e as unknown as { error: Error }).error ?? new Error('Recording failed'));
@@ -73,10 +72,14 @@ export function useRecorder() {
       recorder.start(250);
       setRecording(true);
       frame = requestAnimationFrame(tick);
+      if (stopEarly.current) finish();
     });
   }, []);
 
-  const stop = useCallback(() => stopRef.current?.(), []);
+  const stop = useCallback(() => {
+    if (stopRef.current) stopRef.current();
+    else stopEarly.current = true;
+  }, []);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -88,6 +91,7 @@ export function useRecorder() {
 type Recognition = {
   lang: string;
   interimResults: boolean;
+  continuous: boolean;
   maxAlternatives: number;
   start(): void;
   stop(): void;

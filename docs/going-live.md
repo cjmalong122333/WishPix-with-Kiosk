@@ -53,7 +53,7 @@ in `OPENAI_MODEL`. Any model that supports structured JSON output works.
 | Set | `GEMINI_API_KEY=...` |
 | Model | `GEMINI_IMAGE_MODEL=gemini-3.1-flash-image` (use `gemini-3.1-flash-image-preview` if your account only has the preview) |
 | Fallback | `IMAGE_FALLBACK=pollinations` keeps the free service as a backup if Gemini fails. Set `none` to only use Gemini. |
-| Before (free) | Pollinations.ai: about one picture every 45 seconds, sometimes busy |
+| Before (free) | Pollinations.ai: about one picture every 45 seconds, sometimes busy. Its pictures carry a small "pollinations.ai" logo in the bottom-right corner (it ignores `nologo` for anonymous use), and the logo ends up on the printed sheet |
 | After | Faster, more reliable, better line art. Pollinations is used only if Gemini has a problem |
 
 ### Check the AI setup
@@ -103,8 +103,31 @@ What changes for teachers:
   (when it was off or reported an error) so CUPS starts printing again.
 
 A different printer? Any printer with a Linux (CUPS) driver works with the same settings.
-A thermal ESC/POS sticker printer would need a new driver class in
-`services/hardware/app/drivers.py` next to `CupsPrinter`.
+
+### Optional: a 58 mm thermal printer
+
+The inkjet above is the recommended printer. A cheap 58 mm thermal receipt/sticker
+printer that speaks ESC/POS also works, printing black and white only:
+
+| Setting (`services/hardware/.env`) | Value |
+|---|---|
+| `PRINTER_MODE` | `escpos` |
+| `PAGE_FORMAT` | `58mm` (the default with `escpos`) |
+| `ESCPOS_DEVICE` | `/dev/usb/lp0` for USB (check with `ls /dev/usb/`), or `tcp://<printer-ip>:9100` for a network printer |
+| `ESCPOS_CUT` | `true` cuts after each page (printers without a cutter ignore it) |
+| `ESCPOS_MM_PER_SECOND` | Print speed from the printer's manual (50–90 is usual) |
+| `PAPER_CAPACITY` | About how many pages one roll gives. Teachers press **Refill paper** after a new roll |
+
+Pages are 48 mm wide (384 dots at 203 dpi): every page and every teacher file goes through
+contrast + Floyd-Steinberg dithering. Trace Word runs along the roll (printed sideways)
+so the letters stay big enough to trace. There is no ink to track: Print Management hides
+the ink gauge. To see thermal pages without the printer, set `PRINTER_MODE=mock` and
+`PAGE_FORMAT=58mm` (pages are saved in `services/hardware/data/pages/`).
+
+Check it on real paper before children use it: the dotted letters and dashed outlines must
+stay clear dots and dashes, not a gray blur. If they blur or disappear, the dot size,
+spacing and dash length are in `services/hardware/app/layout.py` (`dot_style`, and
+`dash`/`gap`/`width` in `dashed_picture`), in millimetres.
 
 ---
 
@@ -115,7 +138,8 @@ then:
 
 | Part | What to check or change |
 |---|---|
-| Touchscreen | Opens the kiosk full screen at boot (Chromium kiosk mode). Nothing to change |
+| Screen | Opens the kiosk full screen at boot (Chromium kiosk mode). It is not used as a touchscreen. Nothing to change |
+| Kiosk buttons | Yes (green), No (purple) and Talk (held while speaking), wired to GPIO pins: see "Kiosk buttons" in [deployment.md](deployment.md). Test them on the kiosk screen before the children do |
 | USB microphone | `arecord -l` to find its name; edit `/etc/asound.conf` (`pcm.mic`). Test with `arecord -d 3 test.wav && aplay test.wav` |
 | Speaker | `aplay -l`; edit `pcm.speaker` in `/etc/asound.conf`. Volume is in Teacher App → Settings → Kiosk sounds |
 | Brightness | Teacher App → Kiosk Management → Brightness |
@@ -141,8 +165,16 @@ then:
 - [ ] Kiosk Management → Health check: everything green
 - [ ] Kiosk Management → Services: the AI services you set up are listed
 - [ ] Print Management → Test page comes out on sticker paper, the right size
-- [ ] A full wish: tap the microphone, speak, "Did you say…", picture, printed page
+- [ ] One page of each mode prints right: Trace Word (4 dotted rows), Trace Image (dashed
+      picture + dotted row), Color & Create (thick outlines + the word). Full list:
+      [manual-test-checklist.md](manual-test-checklist.md)
+- [ ] Print to Kiosk: a teacher's PDF prints on the kiosk
+- [ ] A full wish with the real buttons: Yes on the start screen, hold Talk and speak,
+      let go, Yes on "Here's what I heard", picture, printed page, Yes for the next child
+- [ ] No on "Here's what I heard" goes back to "Tell me what you want to create"
 - [ ] A Filipino wish and a Taglish wish
+- [ ] Settings → Test sound says "The kiosk played a test sound", and you hear it from the speaker
+- [ ] Settings → Display Language → Filipino: the kiosk screen switches to Filipino (then back, if needed)
 - [ ] A wish that must be blocked appears in Moderation; Override makes the picture
 - [ ] Turn the printer off mid-session: the teacher sees the problem, the child still sees the picture, Reprint works after
 - [ ] Reboot the Pi: the kiosk opens by itself and the Teacher App reconnects

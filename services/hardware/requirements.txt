@@ -5,3 +5,4 @@ pydantic-settings>=2.6
 pillow>=11.0
 opencv-python-headless>=4.10
 numpy>=2.0
+pypdfium2>=4.30

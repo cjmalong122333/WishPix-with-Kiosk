@@ -90,7 +90,7 @@ export function StatsView({ data, printable }: { data: Stats; printable?: boolea
         <ChartCard title={t('Top themes')} subtitle={t('Pictures made per theme')} empty={!themes.length} table={listTable(themes, t('Theme'))}>
           <BarList rows={themes} />
         </ChartCard>
-        <ChartCard title={t('Activities')} subtitle={t('Requests per activity')} empty={!activities.length} table={listTable(activities, t('Activity'))}>
+        <ChartCard title={t('Modes')} subtitle={t('Requests per mode')} empty={!activities.length} table={listTable(activities, t('Mode'))}>
           <BarList rows={activities} />
         </ChartCard>
         <ChartCard title={t('Why requests were blocked')} subtitle={t('Safety categories')} empty={!categories.length} table={listTable(categories, t('Reason'))}>

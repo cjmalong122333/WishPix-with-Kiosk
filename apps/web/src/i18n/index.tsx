@@ -21,6 +21,11 @@ if (!i18next.isInitialized) {
     interpolation: { prefix: '{', suffix: '}', escapeValue: false },
     react: { useSuspense: false },
   });
+} else {
+  // Development: fil.ts was edited and reloaded, but i18next (one copy for the
+  // whole server) is already set up. Use the new Filipino, or the server keeps
+  // rendering new texts in English until it restarts.
+  i18next.addResourceBundle('fil', 'translation', fil, true, true);
 }
 
 export type Lang = 'en' | 'fil';

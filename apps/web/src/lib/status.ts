@@ -13,10 +13,10 @@ export type Chip = 'online' | 'offline' | 'sleeping' | 'busy' | 'printing';
 // Kiosk modes from the server, shown as the five status chips.
 export function kioskStatus(state: KioskState | null, t: T): { chip: Chip; title: string; text: string } {
   if (!state?.kioskOnline) return { chip: 'offline', title: t('KIOSK OFFLINE'), text: t('Turn on the kiosk screen to connect it.') };
-  if (state.screen?.sleeping) return { chip: 'sleeping', title: t('KIOSK SLEEPING'), text: t('The screen is resting. A touch or the Wake button turns it on.') };
+  if (state.screen?.sleeping) return { chip: 'sleeping', title: t('KIOSK SLEEPING'), text: t('The screen is resting. Any kiosk button or the Wake button turns it on.') };
   switch (state.mode) {
-    case 'waiting': return { chip: 'online', title: t('WAITING FOR TEACHER'), text: t('No activity is running. Choose what the children will do next.') };
-    case 'ready': return { chip: 'online', title: t('READY FOR CHILDREN'), text: t('Children can tap the microphone on the kiosk and say their idea.') };
+    case 'waiting': return { chip: 'online', title: t('WAITING FOR TEACHER'), text: t('No mode is running. Choose what the children will do next.') };
+    case 'ready': return { chip: 'online', title: t('READY FOR CHILDREN'), text: t('Children hold the talk button on the kiosk and say their idea.') };
     case 'paused': return { chip: 'online', title: t('SESSION PAUSED'), text: t('Picture making is stopped. Resume when the children are ready.') };
     case 'listening': return { chip: 'busy', title: t('LISTENING'), text: t('A child is telling the kiosk what to draw.') };
     case 'heard': return { chip: 'busy', title: t('CHECKING WHAT IT HEARD'), text: t('The child is checking that the kiosk understood them.') };
