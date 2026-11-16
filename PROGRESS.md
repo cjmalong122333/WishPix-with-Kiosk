@@ -37,9 +37,12 @@ live session, print and kiosk management, logs, analytics, reports, settings, En
 Pixi, `npm run e2e`, sound/language/timing, and the November revisions). `main` still ends
 at `59d2702` (going-live guide).
 
-**Next:** push to GitHub (the repository had no remote on 2026-11-16), then the user tries
-the revisions and prints the three pages on real paper (and on a thermal printer if one
-is bought). Use the prompt at the end of the session log to continue in a new session.
+Both branches are on GitHub: <https://github.com/jessiejames111105/capstone> (`origin`).
+
+**Next:** merge `november-revisions` into `main` through a pull request once GitHub CI
+passes, then the user tries the revisions and prints the three pages on real paper (and
+on a thermal printer if one is bought). Use the prompt at the end of the session log to
+continue in a new session.
 
 ## Checks (all passing)
 
@@ -78,8 +81,8 @@ is bought). Use the prompt at the end of the session log to continue in a new se
    thermal printer"; the sizes may need tuning); check page drawing time on the Pi 4 (on
    the laptop a Trace Image page takes about 0.5–1.5 s).
 9. Two decisions for the user, still open:
-   - Where to push. The work is committed on `november-revisions`, but there is no remote
-     yet, so other developers can only get it once it is pushed to GitHub.
+   - When to merge `november-revisions` into `main` (open a pull request on GitHub, wait
+     for CI).
    - Whether to stop tracking `.claude/launch.json`. It holds this laptop's full paths, so
      it is wrong on any other computer.
 
@@ -470,8 +473,12 @@ What changed, and why:
 - Checks on Node 22.19.0: lint, typecheck, Vitest (38), `i18n:check` (729 used, 0
   missing), ruff, pytest (31). The production build was not run on this laptop (the
   user's `npm run dev` was running from the same folder); GitHub CI runs it.
-- Everything since `59d2702` is committed on the new branch `november-revisions`. The
-  repository still has no remote; pushing it to GitHub is the next step.
+- Everything since `59d2702` is committed on the new branch `november-revisions`.
+- GitHub: added `origin` = `https://github.com/jessiejames111105/capstone.git` (empty
+  repository) and pushed `main` and `november-revisions`. On this laptop, Git's OpenSSL
+  failed with "unable to get local issuer certificate", so the repository's local config
+  now has `http.sslBackend=schannel` (the Windows certificate store). Other computers
+  don't need it. The pull request was not opened (the GitHub CLI was not signed in).
 
 #### Prompt to continue this work
 
@@ -485,8 +492,8 @@ docs/architecture.md and docs/manual-test-checklist.md.
 Where it stands: the November revisions (modes instead of activities, Free Play removed,
 Free Expression, the Trace Word / Trace Image / Color & Create pages, Display Language and
 Kiosk color in Settings, Print to Kiosk, the optional 58 mm thermal printer) are built and
-pass every check. They are committed on the branch november-revisions (main ends at
-59d2702). Don't commit until I ask.
+pass every check. They are committed on the branch november-revisions and pushed to
+GitHub (origin, https://github.com/jessiejames111105/capstone). Don't commit until I ask.
 
 Rules:
 - The kiosk has no touchscreen. It has only Yes (Enter), No (Escape) and hold-to-talk
