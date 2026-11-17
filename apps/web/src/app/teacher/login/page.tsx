@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, User } from 'lucide-react';
 import { useT } from '@/i18n';
 import { IDLE_KEY, useAuth } from '@/components/teacher/auth';
-import { WelcomeShell } from '@/components/teacher/welcome';
+import { PublicShell, WavingPixi } from '@/components/teacher/public-shell';
 
 export default function LoginPage() {
   const { status, signIn } = useAuth();
@@ -13,7 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Why the teacher was signed out, if it was for being idle (browser only).
+
   const idleMinutes = useSyncExternalStore(
     () => () => {},
     () => sessionStorage.getItem(IDLE_KEY),
@@ -37,55 +36,103 @@ export default function LoginPage() {
     }
   }
 
-  const field = 'flex h-[52px] items-center gap-2.5 rounded-[10px] border border-[#22385a] bg-navy-900 px-3.5 text-[#8a9ab3] focus-within:border-brand-500';
-  const input = 'min-w-0 flex-1 border-0 bg-transparent text-base text-white outline-0 placeholder:text-[#8a9ab3]';
+  const inputClass =
+    'mt-[0.8rem] h-[5.4rem] w-full rounded-[1.4rem] border-[0.2rem] border-[#e7ddf2] bg-[#fcfaff] px-[1.8rem] text-[1.65rem] font-medium text-k-ink outline-none placeholder:text-[#9c92ac] focus:border-k-purple';
 
   return (
-    <WelcomeShell>
-      <form className="w-full max-w-[440px] rounded-2xl bg-navy-800 p-6 text-left text-white shadow-[0_16px_40px_rgba(11,31,58,0.3)]" onSubmit={submit} noValidate>
-        <h2 className="mb-2.5 text-[22px] font-bold">{t('Welcome back')}</h2>
-        <p className="mb-3.5 text-sm text-[#c3cfe0]">{t('Sign in to run sessions on your daycare kiosk.')}</p>
+    <PublicShell
+      active="login"
+      footer="A little support from you. A world of discovery for them."
+    >
+      {/* Left Soft-Lavender Welcome Card */}
+      <div className="absolute top-[15.2rem] left-[6.3rem] flex h-[57.3rem] w-[58.1rem] flex-col rounded-[2.8rem] bg-k-purple-soft px-[3.8rem] py-[3.2rem]">
+        <p className="m-0 text-[1.35rem] font-extrabold tracking-[0.03em] text-k-purple uppercase">
+          WELCOME TO YOUR IMAGINATION STATION
+        </p>
+        <h1 className="mt-[1.6rem] m-0 text-[3.8rem] leading-[1.15] font-extrabold tracking-[-0.015em] text-k-ink">
+          A little idea.
+          <br />
+          A whole new adventure.
+        </h1>
+        <p className="mt-[2rem] m-0 text-[2rem] leading-[1.38] font-medium text-k-muted">
+          Help your child turn spoken ideas
+          <br />
+          into hands-on learning.
+        </p>
+        <WavingPixi className="mx-auto my-auto w-[33.6rem] shrink-0" />
+        <p className="mt-auto m-0 text-center text-[1.75rem] font-extrabold text-k-purple">
+          Pixi is ready when you are.
+        </p>
+      </div>
+
+      {/* Right White Log in Form Card */}
+      <form
+        onSubmit={submit}
+        noValidate
+        className="absolute top-[15.2rem] left-[70.3rem] flex h-[57.3rem] w-[51rem] flex-col rounded-[2.8rem] bg-white px-[4rem] py-[3.6rem]"
+      >
+        <p className="m-0 text-[1.35rem] font-extrabold tracking-[0.03em] text-k-purple uppercase">
+          FOR PARENTS &amp; EDUCATORS
+        </p>
+        <h2 className="mt-[1.4rem] m-0 text-[3.6rem] leading-[1.15] font-extrabold tracking-[-0.015em] text-k-ink">
+          Welcome back!
+        </h2>
+        <p className="mt-[1.2rem] m-0 text-[1.65rem] font-medium text-k-muted">
+          Log in to start your next learning adventure.
+        </p>
+
         {idleMinutes && (
-          <p className="mb-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-[#c3cfe0]" role="status">
+          <p className="mt-[1.2rem] mb-0 rounded-[1rem] bg-k-purple-soft px-[1.4rem] py-[0.8rem] text-[1.35rem] font-semibold text-k-purple" role="status">
             {t('You were signed out after {n} minutes without activity.', { n: idleMinutes })}
           </p>
         )}
-        <label className="mt-3 mb-2 block font-semibold" htmlFor="username">
-          {t('Username')}
+
+        <label htmlFor="username" className="mt-[2.8rem] block text-[1.5rem] font-extrabold text-k-ink">
+          Email address
         </label>
-        <div className={field}>
-          <User size={16} aria-hidden="true" />
-          <input id="username" name="username" placeholder={t('Enter your username')} autoComplete="username" required onChange={() => setError(null)} className={input} />
-        </div>
-        <label className="mt-3 mb-2 block font-semibold" htmlFor="password">
-          {t('Password')}
+        <input
+          id="username"
+          name="username"
+          type="text"
+          placeholder="you@example.com"
+          autoComplete="username"
+          required
+          onChange={() => setError(null)}
+          className={inputClass}
+        />
+
+        <label htmlFor="password" className="mt-[2.2rem] block text-[1.5rem] font-extrabold text-k-ink">
+          Password
         </label>
-        <div className={field}>
-          <Lock size={16} aria-hidden="true" />
-          <input
-            id="password"
-            name="password"
-            type="password"
-            placeholder={t('Enter your password')}
-            autoComplete="current-password"
-            required
-            onChange={() => setError(null)}
-            className={input}
-          />
-        </div>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          required
+          onChange={() => setError(null)}
+          className={inputClass}
+        />
+
+        <span className="mt-[1.2rem] self-end text-[1.4rem] font-extrabold text-k-purple">
+          Forgot password?
+        </span>
+
         {error && (
-          <p className="mt-2 text-sm text-[#ff4d5e]" role="alert">
+          <p className="mt-[0.8rem] mb-0 text-[1.4rem] font-semibold text-danger" role="alert">
             {error}
           </p>
         )}
+
         <button
-          className="mt-4 h-[54px] w-full rounded-[10px] border-0 bg-brand-700 text-lg font-bold text-white shadow-[0_6px_20px_rgba(10,132,198,0.45)] disabled:opacity-70"
+          type="submit"
           disabled={busy}
+          className="mt-auto h-[5.6rem] w-full rounded-full border-0 bg-k-purple text-[1.8rem] font-extrabold text-white transition-opacity hover:opacity-95 disabled:opacity-70"
         >
-          {busy ? t('Signing in…') : t('Login')}
+          {busy ? 'Logging in…' : 'Log in'}
         </button>
-        <p className="mt-3.5 text-center text-[13px] text-[#aab8cc]">{t('Contact your System Administrator for credential recovery.')}</p>
       </form>
-    </WelcomeShell>
+    </PublicShell>
   );
 }

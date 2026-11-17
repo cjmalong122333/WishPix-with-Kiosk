@@ -19,6 +19,15 @@ type Auth = {
 
 const AuthContext = createContext<Auth | null>(null);
 
+function isPublicTeacherPath(pathname: string) {
+  return (
+    pathname === '/teacher' ||
+    pathname === '/teacher/about' ||
+    pathname === '/teacher/team' ||
+    pathname === '/teacher/login'
+  );
+}
+
 // Holds the teacher's sign-in and the live kiosk connection for every page,
 // and applies the shared settings: language, theme color and auto sign-out.
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -55,9 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (reason !== 'expired') void api('/api/auth/logout', { method: 'POST' }).catch(() => {});
       setTeacher(null);
       setStatus('signedOut');
-      router.replace('/teacher/login');
+      if (reason !== 'expired' || !isPublicTeacherPath(pathname)) {
+        router.replace('/teacher/login');
+      }
     },
-    [router]
+    [router, pathname]
   );
 
   // Any API call that finds the sign-in expired (e.g. password changed elsewhere).
@@ -75,8 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Signed-out teachers only see the welcome pages.
   useEffect(() => {
-    const open = pathname === '/teacher' || pathname === '/teacher/login';
-    if (status === 'signedOut' && !open) router.replace('/teacher/login');
+    if (status === 'signedOut' && !isPublicTeacherPath(pathname)) router.replace('/teacher/login');
   }, [status, pathname, router]);
 
   const value = useMemo(() => ({ status, teacher, signIn, signOut, updateTeacher: setTeacher }), [status, teacher, signIn, signOut]);
