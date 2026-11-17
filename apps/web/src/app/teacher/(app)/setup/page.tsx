@@ -144,19 +144,19 @@ export default function SessionSetup() {
     <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6">
       <div className="min-w-0">
         <PageTitle title={t('Session Setup')} lead={t('Choose an activity, theme and safety, then start.')} small>
-          <span className="shrink-0 rounded-full border border-[#c8dcff] bg-[#eaf2ff] px-2.5 py-1 text-xs font-bold text-blue-700">
+          <span className="shrink-0 rounded-full border border-border bg-accent px-2.5 py-1 text-xs font-bold text-primary">
             {t('Step {n} of {total}', { n: index + 1, total: steps.length })}
           </span>
         </PageTitle>
 
-        <ol className="mt-3.5 mb-4 flex list-none rounded-xl bg-[#e9eef5] p-1" aria-label={t('Steps')}>
+        <ol className="mt-3.5 mb-4 flex list-none rounded-xl bg-accent p-1" aria-label={t('Steps')}>
           {steps.map((s, i) => (
             <li key={s} className="min-w-0 flex-1">
               <button
                 className={cn(
-                  'flex w-full items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent px-1 py-2 text-[13px] font-semibold text-slate-500 disabled:cursor-default',
-                  i === index && 'bg-white text-blue-accent shadow-sm',
-                  i < index && 'text-slate-600'
+                  'flex w-full items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent px-1 py-2 text-[13px] font-semibold text-muted-foreground disabled:cursor-default',
+                  i === index && 'bg-white text-primary shadow-sm',
+                  i < index && 'text-muted-foreground'
                 )}
                 onClick={() => i < index && go(s)}
                 disabled={i > index}
@@ -164,8 +164,8 @@ export default function SessionSetup() {
               >
                 <span
                   className={cn(
-                    'grid size-[18px] shrink-0 place-items-center rounded-full bg-[#d8dee8] text-[11px] font-bold text-slate-600',
-                    i === index && 'bg-blue-accent text-white',
+                    'grid size-[18px] shrink-0 place-items-center rounded-full bg-input text-[11px] font-bold text-muted-foreground',
+                    i === index && 'bg-primary text-white',
                     i < index && 'bg-[#22c55e] text-white'
                   )}
                 >
@@ -239,13 +239,13 @@ export default function SessionSetup() {
                     className={cn(
                       'relative flex min-w-0 flex-col gap-2.5 rounded-xl border bg-white p-3 text-left',
                       // The recommended theme keeps its accent and badge even when another is chosen.
-                      th.recommended && 'col-span-2 border-[#9cc0f5] bg-[#f6f9ff] shadow-[0_0_0_4px_rgba(59,130,246,0.12)] md:col-span-3',
-                      selected && 'border-2 border-blue-accent p-[11px]'
+                      th.recommended && 'col-span-2 border-primary/40 bg-accent/50 ring-4 ring-primary/10 md:col-span-3',
+                      selected && 'border-2 border-primary p-[11px]'
                     )}
                     onClick={() => set({ theme: th.name })}
                   >
                     {th.recommended && (
-                      <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-blue-accent px-2 py-0.5 text-[11px] font-bold text-white">
+                      <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-white">
                         <Sparkles size={11} /> {t('Recommended')}
                       </span>
                     )}
@@ -260,7 +260,7 @@ export default function SessionSetup() {
                     ) : (
                       <span className="flex flex-wrap gap-1.5">
                         {th.examples.map((e) => (
-                          <em key={e} className="rounded-md border px-2 py-0.5 text-[11px] text-slate-500 not-italic">
+                          <em key={e} className="rounded-md border px-2 py-0.5 text-[11px] text-muted-foreground not-italic">
                             {t(e)}
                           </em>
                         ))}
@@ -269,7 +269,7 @@ export default function SessionSetup() {
                   </button>
                 );
               })}
-              <div className={cn('flex min-w-0 flex-col gap-2.5 rounded-xl border-[1.5px] border-dashed border-[#b6c0cf] bg-[#fafbfd] p-3', form.theme === 'custom' && 'border-2 border-solid border-blue-accent')}>
+              <div className={cn('flex min-w-0 flex-col gap-2.5 rounded-xl border-[1.5px] border-dashed border-input bg-background p-3', form.theme === 'custom' && 'border-2 border-solid border-primary')}>
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                   <Tint tone="green" size="sm">
                     <Plus />
@@ -298,17 +298,17 @@ export default function SessionSetup() {
                 return (
                   <button
                     key={id}
-                    className={cn('relative flex flex-col items-start gap-1 rounded-xl border bg-white p-[18px] text-left text-slate-500', selected && 'border-2 border-brand-700 p-[17px] text-slate-700')}
+                    className={cn('relative flex flex-col items-start gap-1 rounded-xl border bg-white p-[18px] text-left text-muted-foreground', selected && 'border-2 border-primary p-[17px] text-foreground')}
                     onClick={() => set({ safetyLevel: id })}
                   >
-                    <i className={cn('mb-2 grid size-10 place-items-center rounded-[10px] bg-[#eef3f9] text-[#7b8ba0] not-italic', selected && 'bg-brand-700 text-white')}>
+                    <i className={cn('mb-2 grid size-10 place-items-center rounded-[10px] bg-accent text-muted-foreground not-italic', selected && 'bg-primary text-white')}>
                       <Icon size={20} />
                     </i>
-                    <b className={cn('text-[17px] tracking-[0.04em] text-[#6b7a8f]', selected && 'text-brand-700')}>{t(SAFETY_NAMES[id])}</b>
-                    <em className="text-[11px] font-bold tracking-[0.06em] text-[#3b82c4] uppercase not-italic">{t(tag)}</em>
+                    <b className={cn('text-[17px] tracking-[0.04em] text-muted-foreground', selected && 'text-primary')}>{t(SAFETY_NAMES[id])}</b>
+                    <em className="text-[11px] font-bold tracking-[0.06em] text-primary uppercase not-italic">{t(tag)}</em>
                     <small className="text-[13px] leading-snug">{t(text)}</small>
                     {selected && (
-                      <span className="absolute top-3 right-3 grid size-[22px] place-items-center rounded-full bg-brand-700 text-white">
+                      <span className="absolute top-3 right-3 grid size-[22px] place-items-center rounded-full bg-primary text-white">
                         <Check size={12} strokeWidth={3} />
                       </span>
                     )}
@@ -317,9 +317,9 @@ export default function SessionSetup() {
               })}
             </div>
 
-            <div className="rounded-b-2xl border border-t-[#eef1f5] bg-card px-3.5 pt-4 pb-[18px]">
+            <div className="rounded-b-2xl border border-t-border bg-card px-3.5 pt-4 pb-[18px]">
               <p className="mb-2.5 text-[13px] text-muted-foreground">
-                <b className="mr-2 text-[15px] text-brand-700">{t('Optional')}</b> {t('Fine-tune the rules')}
+                <b className="mr-2 text-[15px] text-primary">{t('Optional')}</b> {t('Fine-tune the rules')}
               </p>
               {form.safetyLevel === 'custom' ? (
                 <div className="grid gap-x-6 md:grid-cols-2">
@@ -340,8 +340,8 @@ export default function SessionSetup() {
                       aria-pressed={on}
                       onClick={() => set({ languages: on ? form.languages.filter((x) => x !== l) : [...form.languages, l] })}
                       className={cn(
-                        'inline-flex items-center gap-1.5 rounded-lg border border-[#cbd5e1] bg-white px-3.5 py-[7px] text-sm font-semibold text-slate-600',
-                        on && 'border-[#9cc0f5] bg-[#eaf2ff] text-blue-700'
+                        'inline-flex items-center gap-1.5 rounded-lg border border-input bg-white px-3.5 py-[7px] text-sm font-semibold text-muted-foreground',
+                        on && 'border-primary/40 bg-accent text-primary'
                       )}
                     >
                       {on && <Check size={14} strokeWidth={3} />} {t(l)}
@@ -378,7 +378,7 @@ export default function SessionSetup() {
               {at === 'safety' ? t('Save Settings') : t('Continue')} <ArrowRight />
             </Button>
           ) : (
-            <Button className="bg-brand-700 hover:bg-brand-700/90" onClick={start} disabled={starting}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={start} disabled={starting}>
               <Play fill="currentColor" /> {starting ? t('Starting…') : t('Start Session')}
             </Button>
           )}
@@ -412,7 +412,7 @@ function Option({ selected, onClick, children }: { selected: boolean; onClick: (
   return (
     <button
       aria-pressed={selected}
-      className={cn('flex w-full items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left shadow-card', selected && 'border-2 border-blue-accent bg-[#f6f9ff] p-[13px]')}
+      className={cn('flex w-full items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left shadow-card', selected && 'border-2 border-primary bg-accent/50 p-[13px]')}
       onClick={onClick}
     >
       {children}
@@ -422,7 +422,7 @@ function Option({ selected, onClick, children }: { selected: boolean; onClick: (
 
 function Radio({ on }: { on: boolean }) {
   return (
-    <em className={cn('grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] border-[#b6c0cf] text-blue-accent not-italic', on && 'border-blue-accent')}>
+    <em className={cn('grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] border-input text-primary not-italic', on && 'border-primary')}>
       {on && <Check size={14} strokeWidth={3} />}
     </em>
   );
@@ -440,7 +440,7 @@ function WordList({ label, hint, words, onChange }: { label: string; hint: strin
     <div>
       <p className="mt-3.5 text-sm font-bold text-foreground">{label}</p>
       <p className="mb-2 text-[11px] text-muted-foreground">{hint}</p>
-      <div className="flex overflow-hidden rounded-lg border border-[#cbd5e1]">
+      <div className="flex overflow-hidden rounded-lg border border-input">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -455,16 +455,16 @@ function WordList({ label, hint, words, onChange }: { label: string; hint: strin
           maxLength={30}
           className="min-w-0 flex-1 border-0 px-3 py-2.5 text-sm outline-0"
         />
-        <button onClick={add} aria-label={t('Add to {list}', { list: label })} className="grid w-11 place-items-center border-0 bg-brand-700 text-white">
+        <button onClick={add} aria-label={t('Add to {list}', { list: label })} className="grid w-11 place-items-center border-0 bg-primary text-white">
           <Plus size={18} />
         </button>
       </div>
       {words.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {words.map((w) => (
-            <span key={w} className="inline-flex items-center gap-1 rounded-full bg-[#eef3f9] py-1 pr-1.5 pl-2.5 text-[13px]">
+            <span key={w} className="inline-flex items-center gap-1 rounded-full bg-accent py-1 pr-1.5 pl-2.5 text-[13px]">
               {w}
-              <button onClick={() => onChange(words.filter((x) => x !== w))} aria-label={t('Remove {word}', { word: w })} className="grid border-0 bg-transparent p-0.5 text-slate-500">
+              <button onClick={() => onChange(words.filter((x) => x !== w))} aria-label={t('Remove {word}', { word: w })} className="grid border-0 bg-transparent p-0.5 text-muted-foreground">
                 <X size={12} />
               </button>
             </span>
@@ -478,7 +478,7 @@ function WordList({ label, hint, words, onChange }: { label: string; hint: strin
 function Review({ icon, tone, label, value, onEdit }: { icon: React.ReactNode; tone: TintName; label: string; value: string; onEdit: () => void }) {
   const t = useT();
   return (
-    <div className="flex items-center gap-3.5 rounded-xl border bg-[#fafbfd] p-3.5">
+    <div className="flex items-center gap-3.5 rounded-xl border bg-background p-3.5">
       <Tint tone={tone} size="lg">
         {icon}
       </Tint>
@@ -486,7 +486,7 @@ function Review({ icon, tone, label, value, onEdit }: { icon: React.ReactNode; t
         <small className="block text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">{label}</small>
         <b className="block text-[15px] text-foreground">{value}</b>
       </span>
-      <button className="border-0 bg-transparent p-0 text-[13px] font-bold text-blue-700" onClick={onEdit}>
+      <button className="border-0 bg-transparent p-0 text-[13px] font-bold text-primary" onClick={onEdit}>
         {t('Edit')}
       </button>
     </div>
@@ -513,13 +513,13 @@ function Summary({ preset, mode, theme, safety, languages, kioskName, kioskOnlin
   ];
   return (
     <Panel className="mt-2 self-start p-[18px] lg:sticky lg:top-24 lg:mt-0">
-      <h2 className="m-0 text-[19px] font-bold text-[#0a5b8a]">{t('Session Summary')}</h2>
+      <h2 className="m-0 text-[19px] font-extrabold text-foreground">{t('Session Summary')}</h2>
       <p className="mt-0.5 mb-3 text-[13px] text-muted-foreground">{t('Sent to kiosk on start')}</p>
       <dl className="m-0">
         {rows.map(([Icon, label, value]) => (
-          <div key={label} className="border-t border-[#eef1f5] py-3">
+          <div key={label} className="border-t border-border py-3">
             <dt className="flex items-center gap-2.5 text-[11px] font-bold tracking-[0.06em] text-muted-foreground uppercase">
-              <Icon size={16} className="text-[#3b82c4]" /> {label}
+              <Icon size={16} className="text-primary" /> {label}
             </dt>
             <dd className="mt-1 ml-[26px] text-[15px] font-bold text-foreground">{value}</dd>
           </div>

@@ -69,12 +69,12 @@ export default function PrintManagement() {
       {printer && <PrinterCard printer={printer} printedToday={data?.summary.printedToday} teacherToday={data?.summary.teacherToday} act={act} />}
 
       {failed > 0 && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[#f6c9d2] bg-danger-bg px-4 py-3.5 text-sm text-slate-700">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[#f6c9d2] bg-danger-bg px-4 py-3.5 text-sm text-foreground">
           <span className="flex items-center gap-2">
             <AlertTriangle size={16} className="text-danger" /> {t(failed === 1 ? '1 picture did not print.' : '{n} pictures did not print.', { n: failed })}
           </span>
           <button
-            className="border-0 bg-transparent p-0 text-[13px] font-bold text-blue-700"
+            className="border-0 bg-transparent p-0 text-[13px] font-bold text-primary"
             onClick={() =>
               act('/api/print/retry-failed', (r) => t(r.count === 1 ? 'Sending 1 picture to the printer.' : 'Sending {n} pictures to the printer.', { n: Number(r.count) }))
             }
@@ -84,7 +84,7 @@ export default function PrintManagement() {
         </div>
       )}
 
-      <div className="mt-4 mb-4 flex rounded-xl bg-[#e9eef5] p-1">
+      <div className="mt-4 mb-4 flex rounded-xl bg-accent p-1">
         {(
           [
             ['all', 'All pictures', 0],
@@ -94,8 +94,8 @@ export default function PrintManagement() {
           <button
             key={id}
             className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-slate-500',
-              view === id && 'bg-white text-blue-accent shadow-sm'
+              'flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-muted-foreground',
+              view === id && 'bg-white text-primary shadow-sm'
             )}
             onClick={() => setView(id)}
             aria-pressed={view === id}
@@ -129,7 +129,7 @@ export default function PrintManagement() {
                   {/* Trace Word pages have no picture: show the page itself. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={r.image_url ?? `/api/pages/${r.id}`} alt="" className="size-full object-cover" />
-                  <Eye size={14} className="absolute right-[3px] bottom-[3px] box-content rounded bg-navy-900/70 p-0.5 text-white" />
+                  <Eye size={14} className="absolute right-[3px] bottom-[3px] box-content rounded bg-foreground/70 p-0.5 text-white" />
                 </button>
                 <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
                   <b className="max-w-full truncate text-[15px] text-foreground">“{r.recognized_text}”</b>
@@ -226,7 +226,7 @@ function PrinterCard({ printer, printedToday, teacherToday, act }: { printer: Pr
             {t('Kiosk printer')}
             {printer.printerName ? ` · ${printer.printerName}` : ''}
           </small>
-          <b className={cn('flex items-center gap-1.5 text-base', status.tone === 'bad' ? 'text-danger' : status.tone === 'busy' ? 'text-blue-700' : 'text-success')}>
+          <b className={cn('flex items-center gap-1.5 text-base', status.tone === 'bad' ? 'text-danger' : status.tone === 'busy' ? 'text-primary' : 'text-success')}>
             <i className="size-2 rounded-full bg-current" />
             {status.text}
           </b>
@@ -294,7 +294,7 @@ function Gauge({ icon, label, value, percent, low }: { icon: React.ReactNode; la
   return (
     <div className="mt-4">
       <div className="mb-1.5 flex justify-between text-[13px]">
-        <span className="flex items-center gap-1.5 text-slate-600">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
           {icon} {label}
         </span>
         <b className={low ? 'text-danger' : 'text-foreground'}>
@@ -302,7 +302,7 @@ function Gauge({ icon, label, value, percent, low }: { icon: React.ReactNode; la
           {low ? ` · ${t('low')}` : ''}
         </b>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[#eef2f7]" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}>
+      <div className="h-2 overflow-hidden rounded-full bg-accent" role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}>
         <i className={cn('block h-full rounded-full transition-[width]', low ? 'bg-danger' : 'bg-primary')} style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
       </div>
     </div>

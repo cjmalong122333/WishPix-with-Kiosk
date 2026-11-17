@@ -20,38 +20,42 @@
   --warning-bg: #fff7e0;
   --splash-gradient: linear-gradient(180deg, #c2cde6 0%, #8ea8cf 45%, #9a9ca3 100%);
 
-  /* Teacher App accent; Settings > Theme color swaps it (html[data-theme]). */
-  --accent-color: #0a84c6;
-  --side-bg: #064b7c;
+  /* Teacher App accent; Settings > Theme color swaps it (html[data-theme]).
+     Default is the WishPix purple used on the public pages and the kiosk. */
+  --accent-color: #7950d5;
+  --accent-soft: #eee6fc;
+  --page-bg: #f8f6ff;
 
   --radius: 0.75rem;
-  --background: #f3f6fa;
-  --foreground: #0f1b2d;
+  --background: var(--page-bg);
+  --foreground: #302344;
   --card: #ffffff;
-  --card-foreground: #0f1b2d;
+  --card-foreground: #302344;
   --popover: #ffffff;
-  --popover-foreground: #0f1b2d;
+  --popover-foreground: #302344;
   --primary: var(--accent-color);
   --primary-foreground: #ffffff;
-  --secondary: #eef3f9;
-  --secondary-foreground: #11284a;
-  --muted: #eef2f7;
-  --muted-foreground: #64748b;
-  --accent: #eef3f9;
-  --accent-foreground: #11284a;
+  --secondary: var(--accent-soft);
+  --secondary-foreground: #302344;
+  --muted: #f3eefb;
+  --muted-foreground: #756b86;
+  --accent: var(--accent-soft);
+  --accent-foreground: #302344;
   --destructive: #e11d48;
-  --border: #e3e8ef;
-  --input: #d5dde8;
+  --border: #ebe4f7;
+  --input: #e7ddf2;
   --ring: var(--accent-color);
 }
 
-html[data-theme='deep_blue'] { --accent-color: #0a84c6; --side-bg: #064b7c; }
-html[data-theme='teal'] { --accent-color: #0f9488; --side-bg: #0b5e57; }
-html[data-theme='purple'] { --accent-color: #7c3aed; --side-bg: #4c1d95; }
-html[data-theme='green'] { --accent-color: #16a34a; --side-bg: #14532d; }
-html[data-theme='orange'] { --accent-color: #ea580c; --side-bg: #7c2d12; }
+/* Each theme keeps white text on its main color at 4.5:1 or better. */
+html[data-theme='purple'] { --accent-color: #7950d5; --accent-soft: #eee6fc; --page-bg: #f8f6ff; }
+html[data-theme='lavender'] { --accent-color: #7b62c9; --accent-soft: #ece8fb; --page-bg: #f8f7ff; }
+html[data-theme='violet'] { --accent-color: #5b2fb0; --accent-soft: #e9e0fa; --page-bg: #f7f3ff; }
+html[data-theme='plum'] { --accent-color: #8e3a7e; --accent-soft: #f6e3f1; --page-bg: #fdf6fb; }
+html[data-theme='grape'] { --accent-color: #4b3a9e; --accent-soft: #e5e2f7; --page-bg: #f6f5ff; }
 
 @theme inline {
+  --font-teacher: var(--font-nunito), 'Nunito', system-ui, sans-serif;
   --font-sans: var(--font-inter), system-ui, -apple-system, 'Segoe UI', sans-serif;
   --color-navy-900: var(--navy-900);
   --color-navy-800: var(--navy-800);
@@ -60,7 +64,7 @@ html[data-theme='orange'] { --accent-color: #ea580c; --side-bg: #7c2d12; }
   --color-brand-600: var(--brand-600);
   --color-brand-500: var(--brand-500);
   --color-blue-accent: var(--blue-accent);
-  --color-side: var(--side-bg);
+  --color-accent-soft: var(--accent-soft);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-danger: var(--danger);
@@ -90,7 +94,7 @@ html[data-theme='orange'] { --accent-color: #ea580c; --side-bg: #7c2d12; }
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --shadow-card: 0 1px 2px rgba(15, 27, 45, 0.04), 0 4px 16px rgba(15, 27, 45, 0.06);
+  --shadow-card: 0 1px 2px rgba(48, 35, 68, 0.03), 0 4px 16px rgba(48, 35, 68, 0.05);
 
   /* Kiosk screen (see the block "Kiosk screen" below). */
   --font-kiosk: var(--font-nunito), 'Nunito', system-ui, sans-serif;
@@ -147,27 +151,26 @@ html:has([data-kiosk]) {
 [data-kiosk][data-activity='trace_learn'] { --k-accent: var(--k-teal); --k-accent-soft: #ddf3e9; }
 [data-kiosk][data-tint='trace_learn'] { --k-bg: #f1fbf7; }
 
-/* Kiosk Color (Teacher App > Settings). "auto" sets no data-color and keeps
-   the design's colors above; any other choice recolors the whole kiosk, in
-   every mode. The main color carries white text, so each one keeps at least
-   4.5:1 contrast with white. These come after the mode rules so they win. */
+/* Kiosk Color (Teacher App > Settings): a shade of purple that recolors the
+   whole kiosk, in every mode. The main color carries white text, so each one
+   keeps at least 4.5:1 contrast with white. These come after the mode rules so they win. */
 [data-kiosk][data-color] { --k-accent: var(--k-purple); }
 [data-kiosk][data-color='purple'] { --k-accent-soft: #eee3fd; --k-bg: #f8f6ff; }
-[data-kiosk][data-color='green'] {
-  --k-purple: #237159; --k-purple-soft: #ddf3e9; --k-purple-line: #cdeadd; --k-purple-mid: #8cc9b0;
-  --k-accent-soft: #ddf3e9; --k-bg: #f1fbf7; --k-border: #d5ece2;
+[data-kiosk][data-color='lavender'] {
+  --k-purple: #7b62c9; --k-purple-soft: #ece8fb; --k-purple-line: #e0daf6; --k-purple-mid: #b3a4e6;
+  --k-accent-soft: #ece8fb; --k-bg: #f8f7ff; --k-border: #e3def5;
 }
-[data-kiosk][data-color='blue'] {
-  --k-purple: #2a63c2; --k-purple-soft: #e3edfc; --k-purple-line: #d3e2f8; --k-purple-mid: #93b6ec;
-  --k-accent-soft: #e3edfc; --k-bg: #f4f8ff; --k-border: #dbe6f6;
+[data-kiosk][data-color='violet'] {
+  --k-purple: #5b2fb0; --k-purple-soft: #e9e0fa; --k-purple-line: #dccff5; --k-purple-mid: #a185de;
+  --k-accent-soft: #e9e0fa; --k-bg: #f7f3ff; --k-border: #e2d8f5;
 }
-[data-kiosk][data-color='orange'] {
-  --k-purple: #a8530f; --k-purple-soft: #fdebdc; --k-purple-line: #f6dcc6; --k-purple-mid: #eaa877;
-  --k-accent-soft: #fdebdc; --k-bg: #fff8f1; --k-border: #f2e1d2;
+[data-kiosk][data-color='plum'] {
+  --k-purple: #8e3a7e; --k-purple-soft: #f6e3f1; --k-purple-line: #ecd2e6; --k-purple-mid: #cf8ec2;
+  --k-accent-soft: #f6e3f1; --k-bg: #fdf6fb; --k-border: #efdcea;
 }
-[data-kiosk][data-color='pink'] {
-  --k-purple: #b8356f; --k-purple-soft: #fbe3ef; --k-purple-line: #f3d2e2; --k-purple-mid: #e595bb;
-  --k-accent-soft: #fbe3ef; --k-bg: #fff5f9; --k-border: #f1dbe6;
+[data-kiosk][data-color='grape'] {
+  --k-purple: #4b3a9e; --k-purple-soft: #e5e2f7; --k-purple-line: #d7d2f0; --k-purple-mid: #9a8fd6;
+  --k-accent-soft: #e5e2f7; --k-bg: #f6f5ff; --k-border: #dedaf2;
 }
 
 @layer base {

@@ -73,13 +73,13 @@ export default function Dashboard() {
 
       <Hero>
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-[#cfe0f5] uppercase">
-            <MonitorSmartphone size={18} className="text-[#7cc4ff]" /> {t('Kiosk status')} • {state?.kioskName ?? t('Kiosk')}
+          <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-white/80 uppercase">
+            <MonitorSmartphone size={18} className="text-[#e5daf5]" /> {t('Kiosk status')} • {state?.kioskName ?? t('Kiosk')}
           </span>
           <OnlinePill online={state?.kioskOnline} onText={t('Online')} offText={t('Offline')} />
         </div>
         <h2 className="mt-3.5 mb-1.5 text-[21px] font-extrabold">{status.title}</h2>
-        <p className="m-0 max-w-[420px] text-sm leading-relaxed text-[#d0dbe9]">
+        <p className="m-0 max-w-[420px] text-sm leading-relaxed text-white/85">
           {session && state?.mode !== 'waiting' ? `${activityName(session, t)} · ${themeName(session.theme, t)}. ` : ''}
           {status.text}
         </p>
@@ -88,7 +88,7 @@ export default function Dashboard() {
             <span
               key={c.id}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] text-[#cfd8e5] opacity-75',
+                'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] text-white/80 opacity-75',
                 status.chip === c.id ? 'border border-white/40 bg-white/20 text-white opacity-100' : 'bg-white/8'
               )}
             >
@@ -110,7 +110,7 @@ export default function Dashboard() {
       )}
 
       <SectionHead title={t("Today's summary")}>
-        <button className="border-0 bg-transparent p-0 text-[13px] font-semibold text-blue-accent" onClick={refresh}>
+        <button className="border-0 bg-transparent p-0 text-[13px] font-semibold text-primary" onClick={refresh}>
           {t('Refresh')}
         </button>
       </SectionHead>
@@ -143,7 +143,7 @@ export default function Dashboard() {
 
       <SectionHead title={t('Quick actions')} lead={t('Control the current session.')} />
       <button
-        className="flex w-full items-center gap-3.5 rounded-[14px] border-0 bg-primary p-4 text-left text-white shadow-[0_8px_20px_rgba(10,132,198,0.3)]"
+        className="flex w-full items-center gap-3.5 rounded-[18px] border-0 bg-primary p-4 text-left text-white shadow-[0_8px_20px_rgba(48,35,68,0.18)]"
         onClick={() => router.push('/teacher/setup')}
       >
         <span className="grid size-[46px] place-items-center rounded-xl bg-white/20">

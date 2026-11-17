@@ -428,7 +428,7 @@ function KioskView({ state, connected, error, demo }: ViewProps) {
   const activity = session?.activity_type ?? '';
   const progress = demo?.screen === 'starting' ? 60 : link === 'starting' ? (connected ? 75 : 35) : 100;
   const brightness = state?.screen?.brightness ?? 100;
-  const kioskColor = state?.prefs?.kioskColor ?? 'auto';
+  const kioskColor = state?.prefs?.kioskColor ?? 'purple';
   // Pixi reads the microphone level every frame (the React Compiler keeps this stable).
   const levelRead = () => recorder.level.current;
 
@@ -464,8 +464,8 @@ function KioskView({ state, connected, error, demo }: ViewProps) {
       data-screen={sleeping ? 'sleep' : screen}
       data-activity={activity || undefined}
       data-tint={screen === 'home' ? activity : undefined}
-      // Kiosk Color from the Teacher App's Settings (globals.css); auto keeps each mode's own colors.
-      data-color={kioskColor !== 'auto' ? kioskColor : undefined}
+      // Kiosk Color from the Teacher App's Settings (globals.css): a shade of purple.
+      data-color={kioskColor}
       className="fixed inset-0 grid place-items-center overflow-hidden bg-k-bg font-kiosk text-k-ink transition-colors duration-500 select-none"
       style={{ filter: brightness < 100 ? `brightness(${brightness}%)` : undefined }}
     >

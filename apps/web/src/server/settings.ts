@@ -6,8 +6,8 @@ import { prisma } from './db';
 export const DEFAULTS: Record<string, string> = {
   language: 'en',
   volume: '70',
-  theme_color: 'deep_blue',
-  kiosk_color: 'auto',
+  theme_color: 'purple',
+  kiosk_color: 'purple',
   auto_sleep: 'true',
   auto_sleep_minutes: '15',
   auto_logout: 'true',
@@ -15,15 +15,16 @@ export const DEFAULTS: Record<string, string> = {
   kiosk_brightness: '100',
 };
 
+const PURPLES = ['purple', 'lavender', 'violet', 'plum', 'grape'];
+
 type Rule = { values: string[] } | { min: number; max: number } | { bool: true };
 
 const SCHEMA: Record<string, Rule> = {
   language: { values: ['en', 'fil'] }, // display language: Teacher App, kiosk screen, Color & Create word
   volume: { min: 0, max: 100 }, // kiosk sound effects
-  theme_color: { values: ['deep_blue', 'teal', 'purple', 'green', 'orange'] }, // Teacher App accent
-  // Kiosk screen colors. auto: the design's colors for each mode (purple for
-  // Color & Create, green for Trace & Learn); the others use one color for both.
-  kiosk_color: { values: ['auto', 'purple', 'green', 'blue', 'orange', 'pink'] },
+  // Teacher App accent and kiosk screen colors: shades of purple only.
+  theme_color: { values: PURPLES },
+  kiosk_color: { values: PURPLES },
   auto_sleep: { bool: true },
   auto_sleep_minutes: { min: 1, max: 120 },
   auto_logout: { bool: true },
@@ -59,7 +60,8 @@ function typed(key: string, raw: string) {
   const rule = SCHEMA[key];
   if ('bool' in rule) return raw === 'true';
   if ('min' in rule) return Number(raw);
-  return raw;
+  // A value saved before the choices changed (e.g. an old 'teal') falls back to the default.
+  return rule.values.includes(raw) ? raw : DEFAULTS[key];
 }
 
 export async function readSettings(): Promise<Settings> {

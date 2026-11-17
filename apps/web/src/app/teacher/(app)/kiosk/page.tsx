@@ -85,13 +85,13 @@ export default function KioskManagement() {
 
       <Hero>
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-[#cfe0f5] uppercase">
-            <Monitor size={18} className="text-[#7cc4ff]" /> {t('Kiosk')}
+          <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.08em] text-white/80 uppercase">
+            <Monitor size={18} className="text-[#e5daf5]" /> {t('Kiosk')}
           </span>
           <OnlinePill online={state?.kioskOnline} onText={t('Online')} offText={t('Offline')} />
         </div>
         <KioskName name={state?.kioskName ?? info?.name} onSave={(name) => act('/api/kiosk', t('Kiosk renamed.'), 'PATCH', { name })} />
-        <p className="m-0 max-w-[460px] text-sm text-[#d0dbe9]">{status.text}</p>
+        <p className="m-0 max-w-[460px] text-sm text-white/85">{status.text}</p>
         <dl className="mt-4 grid grid-cols-3 gap-3">
           {[
             [info?.online ? t('Connected for') : t('Last seen'), info ? (info.online && connectedAt ? duration(now - connectedAt.getTime(), t) : when(info.lastSeen, t) || t('Never')) : '–'],
@@ -99,7 +99,7 @@ export default function KioskManagement() {
             [t('Version'), system?.version ?? info?.firmware ?? '–'],
           ].map(([label, value]) => (
             <div key={label}>
-              <dt className="text-[11px] tracking-[0.06em] text-[#9fb3cc] uppercase">{label}</dt>
+              <dt className="text-[11px] tracking-[0.06em] text-white/70 uppercase">{label}</dt>
               <dd className="m-0 mt-0.5 font-bold">{value}</dd>
             </div>
           ))}
@@ -108,7 +108,7 @@ export default function KioskManagement() {
 
       <SectionHead title={t('Health check')}>
         <button
-          className="border-0 bg-transparent p-0 text-[13px] font-semibold text-blue-accent"
+          className="border-0 bg-transparent p-0 text-[13px] font-semibold text-primary"
           onClick={() => {
             setHealth(null);
             checkHealth();
@@ -174,7 +174,7 @@ export default function KioskManagement() {
             <b className="block text-[15px]">{sleeping ? t('The screen is asleep') : t('The screen is awake')}</b>
             <small className="text-[13px] text-muted-foreground">
               {info?.autoSleep ? t('Sleeps by itself after {n} min with nobody using it.', { n: info.autoSleepMinutes }) : t('Auto-sleep is off.')}{' '}
-              <Link href="/teacher/settings" className="text-blue-700">
+              <Link href="/teacher/settings" className="text-primary">
                 {t('Change this in Settings.')}
               </Link>
             </small>
@@ -332,7 +332,7 @@ function HealthRow({ icon, label, ok, warn, pending, text, link }: HealthProps) 
         <small className={cn('text-[13px]', tone === 'bad' ? 'text-danger' : 'text-muted-foreground')}>{text}</small>
       </span>
       {link && (
-        <Link className="text-[13px] font-bold text-blue-700 no-underline" href={link}>
+        <Link className="text-[13px] font-bold text-primary no-underline" href={link}>
           {t('Fix')} →
         </Link>
       )}

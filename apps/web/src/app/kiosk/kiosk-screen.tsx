@@ -114,8 +114,8 @@ function demoFor(params: URLSearchParams): KioskDemo | null {
     prefs: {
       language: (params.get('lang') as 'en' | 'fil') ?? 'en',
       volume: 60,
-      themeColor: 'deep_blue',
-      kioskColor: params.get('color') ?? 'auto',
+      themeColor: 'purple',
+      kioskColor: params.get('color') ?? 'purple',
       autoLogout: false,
       autoLogoutMinutes: 30,
     },

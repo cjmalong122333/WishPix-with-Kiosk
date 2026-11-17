@@ -14,11 +14,11 @@ export const metadata: Metadata = {
   icons: { icon: '/favicon.svg' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#11284a' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7950d5' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="deep_blue" className={`${inter.variable} ${fredoka.variable} ${nunito.variable}`}>
+    <html lang="en" data-theme="purple" className={`${inter.variable} ${fredoka.variable} ${nunito.variable}`}>
       <body className="min-h-screen font-sans">{children}</body>
     </html>
   );

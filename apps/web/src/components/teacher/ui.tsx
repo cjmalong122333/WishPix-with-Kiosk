@@ -23,7 +23,7 @@ export function SectionHead({ title, children, lead }: { title: React.ReactNode;
   return (
     <div className="mt-6 mb-2.5 flex items-baseline justify-between gap-3">
       <div>
-        <h3 className="m-0 text-[13px] font-bold tracking-[0.06em] text-slate-600 uppercase">{title}</h3>
+        <h3 className="m-0 text-[13px] font-extrabold tracking-[0.06em] text-primary uppercase">{title}</h3>
         {lead && <p className="m-0 text-[13px] text-muted-foreground">{lead}</p>}
       </div>
       {children}
@@ -32,7 +32,7 @@ export function SectionHead({ title, children, lead }: { title: React.ReactNode;
 }
 
 export const TINTS = {
-  blue: 'bg-[#eaf2ff] text-[#1d6bff]',
+  blue: 'bg-accent text-[#1d6bff]',
   purple: 'bg-[#f4ecff] text-[#9333ea]',
   indigo: 'bg-[#eef0ff] text-[#4f46e5]',
   green: 'bg-[#e8f7ee] text-[#16a34a]',
@@ -41,7 +41,8 @@ export const TINTS = {
   gray: 'bg-[#f1f4f8] text-[#475569]',
   orange: 'bg-[#fff1e6] text-[#ea580c]',
   pink: 'bg-[#fdeef6] text-[#db2777]',
-  navy: 'bg-brand-700 text-white',
+  navy: 'bg-primary text-white',
+  brand: 'bg-accent text-primary',
 } as const;
 export type TintName = keyof typeof TINTS;
 
@@ -51,14 +52,14 @@ export function Tint({ tone, children, size = 'md', className }: { tone: TintNam
 }
 
 export function Panel({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('min-w-0 rounded-[14px] border bg-card p-4 shadow-card', className)}>{children}</div>;
+  return <div className={cn('min-w-0 rounded-[18px] border border-border bg-card p-4 shadow-card', className)}>{children}</div>;
 }
 
 // Summary card used on the Dashboard and the management pages.
 export function Stat({ label, value, note, icon, tone, small }: { label: string; value: React.ReactNode; note?: React.ReactNode; icon?: React.ReactNode; tone: TintName; small?: boolean }) {
   return (
     <Panel className="p-3.5">
-      <div className="flex justify-between gap-2 text-[13px] text-slate-600">
+      <div className="flex justify-between gap-2 text-[13px] font-semibold text-muted-foreground">
         <span>{label}</span>
         {icon && <Tint tone={tone}>{icon}</Tint>}
       </div>
@@ -84,7 +85,7 @@ export function Chips<V extends string>({ label, options, value, onChange }: { l
           onClick={() => onChange(id)}
           className={cn(
             'rounded-full border px-3 py-1.5 text-[13px] font-semibold transition',
-            value === id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-slate-600 hover:bg-accent'
+            value === id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-primary'
           )}
         >
           {text}
@@ -95,10 +96,10 @@ export function Chips<V extends string>({ label, options, value, onChange }: { l
 }
 
 const TONES: Record<Tone, string> = {
-  blue: 'bg-[#eaf2ff] text-[#1d4ed8]',
+  blue: 'bg-accent text-[#1d4ed8]',
   red: 'bg-danger-bg text-danger',
   amber: 'bg-warning-bg text-[#b45309]',
-  gray: 'bg-[#f1f4f8] text-slate-600',
+  gray: 'bg-muted text-muted-foreground',
   green: 'bg-success-bg text-success',
 };
 
@@ -108,7 +109,7 @@ export function Tag({ tone, children, className }: { tone: Tone; children: React
 
 export function Empty({ icon, title, text, children }: { icon?: React.ReactNode; title: string; text?: string; children?: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-[14px] border border-dashed bg-card px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-[18px] border border-dashed border-border bg-card px-6 py-10 text-center">
       {icon && <span className="text-muted-foreground [&_svg]:size-8">{icon}</span>}
       <b className="text-foreground">{title}</b>
       {text && <p className="m-0 max-w-sm text-sm text-muted-foreground">{text}</p>}
@@ -143,8 +144,8 @@ export function Thumb({ src, alt, className }: { src?: string | null; alt: strin
 export function Hero({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <section
-      className={cn('relative mt-[18px] overflow-hidden rounded-2xl p-5 text-white', className)}
-      style={{ background: 'radial-gradient(circle at 100% 100%, rgba(29,107,255,0.35), transparent 45%), linear-gradient(135deg, #0b1f3a, #11284a)' }}
+      className={cn('relative mt-[18px] overflow-hidden rounded-[22px] p-5 text-white', className)}
+      style={{ background: 'radial-gradient(circle at 100% 100%, rgba(255,255,255,0.18), transparent 45%), linear-gradient(135deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 70%, #1a1030))' }}
     >
       {children}
     </section>
@@ -170,15 +171,15 @@ export function NoticeBar({ icon, text, href, link, warn }: { icon: React.ReactN
   return (
     <div
       className={cn(
-        'mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border px-4 py-3.5 text-sm text-slate-700',
-        warn ? 'border-[#f6c9d2] bg-danger-bg [&_svg]:text-danger' : 'border-[#d6e6fb] bg-[#eef5ff] [&_svg]:text-[#d4a017]'
+        'mt-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border px-4 py-3.5 text-sm text-foreground',
+        warn ? 'border-[#f6c9d2] bg-danger-bg [&_svg]:text-danger' : 'border-border bg-accent [&_svg]:text-primary'
       )}
     >
       <span className="flex items-center gap-2">
         {icon}
         {text}
       </span>
-      <Link href={href} className="font-bold text-blue-700 no-underline">
+      <Link href={href} className="font-extrabold text-primary no-underline">
         {link} →
       </Link>
     </div>
@@ -187,7 +188,7 @@ export function NoticeBar({ icon, text, href, link, warn }: { icon: React.ReactN
 
 // One row in a list of requests or events.
 export function Row({ children, className, href }: { children: React.ReactNode; className?: string; href?: string }) {
-  const cls = cn('flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 shadow-card', href && 'no-underline hover:border-[#f3a3b4]', className);
+  const cls = cn('flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-card', href && 'no-underline hover:border-primary/40', className);
   return href ? (
     <Link href={href} className={cls}>
       {children}

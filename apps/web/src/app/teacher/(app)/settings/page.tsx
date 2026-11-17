@@ -16,24 +16,16 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/components/teacher/auth';
 import { ErrorText, PageTitle, Panel, Tint } from '@/components/teacher/ui';
 
-// Teacher App accent colors; the first is the WishPix default.
+// Shades of purple for the Teacher App accent (html[data-theme]) and the kiosk
+// screen (the --k-* tokens), both in globals.css. The first is the WishPix purple.
 const THEMES = [
-  ['deep_blue', 'Deep blue', '#0a84c6'],
-  ['teal', 'Teal', '#0f9488'],
-  ['purple', 'Purple', '#7c3aed'],
-  ['green', 'Green', '#16a34a'],
-  ['orange', 'Orange', '#ea580c'],
-] as const;
-// Kiosk screen colors (the --k-* tokens in globals.css). Auto keeps the
-// design's colors: purple for Color & Create, green for Trace & Learn.
-const KIOSK_COLORS = [
-  ['auto', 'Auto', 'linear-gradient(135deg, #7950d5 50%, #287c64 50%)'],
   ['purple', 'Purple', '#7950d5'],
-  ['green', 'Green', '#237159'],
-  ['blue', 'Blue', '#2a63c2'],
-  ['orange', 'Orange', '#a8530f'],
-  ['pink', 'Pink', '#b8356f'],
+  ['lavender', 'Lavender', '#7b62c9'],
+  ['violet', 'Violet', '#5b2fb0'],
+  ['plum', 'Plum', '#8e3a7e'],
+  ['grape', 'Grape', '#4b3a9e'],
 ] as const;
+const KIOSK_COLORS = THEMES;
 const SLEEP_MINUTES = [5, 10, 15, 30, 60];
 const LOGOUT_MINUTES = [15, 30, 60, 120];
 
@@ -99,7 +91,7 @@ export default function SettingsPage() {
                 aria-checked={settings.language === id}
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold',
-                  settings.language === id ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-slate-600'
+                  settings.language === id ? 'border-primary bg-primary text-primary-foreground' : 'bg-card text-muted-foreground'
                 )}
                 onClick={() => save({ language: id }, id === 'fil' ? 'Naka-Filipino na.' : 'Now in English.')}
               >
@@ -116,11 +108,11 @@ export default function SettingsPage() {
                 key={id}
                 role="radio"
                 aria-checked={settings.theme_color === id}
-                className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 text-xs text-slate-600"
+                className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 text-xs text-muted-foreground"
                 onClick={() => save({ theme_color: id }, t('Theme color saved.'))}
               >
                 <i
-                  className={cn('grid size-10 place-items-center rounded-full text-white ring-offset-2', settings.theme_color === id && 'ring-2 ring-slate-400')}
+                  className={cn('grid size-10 place-items-center rounded-full text-white ring-offset-2', settings.theme_color === id && 'ring-2 ring-foreground/40')}
                   style={{ background: color }}
                 >
                   {settings.theme_color === id && <Check size={16} strokeWidth={3} />}
@@ -138,11 +130,11 @@ export default function SettingsPage() {
                 key={id}
                 role="radio"
                 aria-checked={settings.kiosk_color === id}
-                className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 text-xs text-slate-600"
+                className="flex flex-col items-center gap-1 border-0 bg-transparent p-0 text-xs text-muted-foreground"
                 onClick={() => save({ kiosk_color: id }, t('Kiosk color saved.'))}
               >
                 <i
-                  className={cn('grid size-10 place-items-center rounded-full text-white ring-offset-2', settings.kiosk_color === id && 'ring-2 ring-slate-400')}
+                  className={cn('grid size-10 place-items-center rounded-full text-white ring-offset-2', settings.kiosk_color === id && 'ring-2 ring-foreground/40')}
                   style={{ background: color }}
                 >
                   {settings.kiosk_color === id && <Check size={16} strokeWidth={3} />}
@@ -190,7 +182,7 @@ export default function SettingsPage() {
         </Section>
 
         <Section icon={<Info />} title={t('About WishPix')}>
-          <ul className="m-0 grid list-disc gap-1 pl-5 text-[13px] text-slate-600">
+          <ul className="m-0 grid list-disc gap-1 pl-5 text-[13px] text-muted-foreground">
             <li>{t('Version {v}', { v: '1.0.0' })}</li>
             <li>{t('Everything is saved on the kiosk only. Pictures are made by an online AI image service.')}</li>
             <li>{t('No child names and no voice recordings are ever saved.')}</li>
@@ -340,7 +332,7 @@ function PasswordForm() {
       <p className="m-0 text-sm font-bold">{t('Change password')}</p>
       {fields.map(([key, label, auto]) => (
         <div key={key} className="grid gap-1">
-          <Label htmlFor={`pw-${key}`} className="text-[13px] font-normal text-slate-600">
+          <Label htmlFor={`pw-${key}`} className="text-[13px] font-normal text-muted-foreground">
             {label}
           </Label>
           <Input id={`pw-${key}`} type="password" value={form[key]} onChange={(e) => set({ [key]: e.target.value })} autoComplete={auto} minLength={key === 'current' ? undefined : 8} required />

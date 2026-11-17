@@ -85,7 +85,7 @@ export default function ReportView({ params }: { params: Promise<{ id: string }>
       </div>
 
       <header className="border-b pb-3">
-        <p className="m-0 text-xs font-bold tracking-[0.1em] text-brand-700 uppercase">WishPix · {t('Teacher App')}</p>
+        <p className="m-0 text-xs font-bold tracking-[0.1em] text-primary uppercase">WishPix · {t('Teacher App')}</p>
         <h1 className="m-0 mt-1 text-2xl font-extrabold">{title}</h1>
         <small className="text-[13px] text-muted-foreground">{t('Made {when}', { when: at(report.created_at) })}</small>
       </header>

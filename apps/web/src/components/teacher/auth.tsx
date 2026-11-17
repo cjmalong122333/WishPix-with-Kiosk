@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Theme color for the Teacher App only; the kiosk keeps its own colors.
   useEffect(() => {
-    document.documentElement.dataset.theme = prefs?.themeColor ?? 'deep_blue';
+    document.documentElement.dataset.theme = prefs?.themeColor ?? 'purple';
   }, [prefs?.themeColor]);
 
   // Signed-out teachers only see the welcome pages.

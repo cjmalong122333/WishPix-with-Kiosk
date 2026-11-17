@@ -92,7 +92,7 @@ export default function Reports() {
                 key={id}
                 role="radio"
                 aria-checked={type === id}
-                className={cn('flex items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left', type === id && 'border-2 border-blue-accent bg-[#f6f9ff] p-[13px]')}
+                className={cn('flex items-center gap-3.5 rounded-[14px] border bg-card p-3.5 text-left', type === id && 'border-2 border-primary bg-accent/50 p-[13px]')}
                 onClick={() => setType(id)}
               >
                 <Tint tone={tone}>
@@ -176,7 +176,7 @@ export default function Reports() {
               <Button variant="ghost" size="icon" onClick={() => remove(r)} aria-label={t('Delete report')}>
                 <Trash2 />
               </Button>
-              <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" />
+              <ChevronRight size={18} className="shrink-0 text-muted-foreground/70" aria-hidden="true" />
             </li>
           );
         })}

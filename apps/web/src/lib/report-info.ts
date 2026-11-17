@@ -37,4 +37,5 @@ export function downloadCsv(filename: string, head: string[], rows: unknown[][])
 
 // Categorical chart colors in fixed order. Validated as a set for color-blind
 // separation (light surface); never reorder or cycle them.
-export const SERIES_COLORS = ['#2a78d6', '#eb6834', '#1baf7a'];
+// The first is the WishPix purple; kept fixed so it never matches the others.
+export const SERIES_COLORS = ['#7950d5', '#eb6834', '#1baf7a'];

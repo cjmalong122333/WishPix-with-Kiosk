@@ -102,7 +102,7 @@ export default function Moderation() {
         <Stat label={t('Overridden today')} value={summary?.overriddenToday} tone="green" icon={<CircleCheck />} />
       </Stats>
 
-      <div className="mt-4 mb-4 flex rounded-xl bg-[#e9eef5] p-1">
+      <div className="mt-4 mb-4 flex rounded-xl bg-accent p-1">
         {(
           [
             ['pending', 'Needs review', summary?.pending],
@@ -112,8 +112,8 @@ export default function Moderation() {
           <button
             key={id}
             className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-slate-500',
-              view === id && 'bg-white text-blue-accent shadow-sm'
+              'flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-muted-foreground',
+              view === id && 'bg-white text-primary shadow-sm'
             )}
             onClick={() => setView(id)}
             aria-pressed={view === id}
@@ -195,8 +195,8 @@ function ModCard({ item, busy, onReview }: { item: RequestItem; busy: boolean; o
               'm-0 flex flex-col rounded-lg px-3 py-2 text-[13px] font-bold',
               result.tone === 'ok' && 'bg-success-bg text-success',
               result.tone === 'bad' && 'bg-danger-bg text-danger',
-              result.tone === 'wait' && 'bg-[#eaf2ff] text-blue-700',
-              result.tone === 'kept' && 'bg-[#f1f4f8] text-slate-600'
+              result.tone === 'wait' && 'bg-accent text-primary',
+              result.tone === 'kept' && 'bg-muted text-muted-foreground'
             )}
           >
             {result.text}

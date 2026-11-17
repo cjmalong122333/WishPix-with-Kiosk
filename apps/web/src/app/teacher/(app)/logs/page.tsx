@@ -38,7 +38,7 @@ export default function ActivityLogs() {
     <div>
       <PageTitle title={t('Activity Logs')} lead={t('Every request from the children, and every action by teachers and the kiosk.')} small />
 
-      <div className="mt-4 mb-4 flex rounded-xl bg-[#e9eef5] p-1">
+      <div className="mt-4 mb-4 flex rounded-xl bg-accent p-1">
         {(
           [
             ['requests', "Children's requests"],
@@ -47,7 +47,7 @@ export default function ActivityLogs() {
         ).map(([id, label]) => (
           <button
             key={id}
-            className={cn('flex-1 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-slate-500', tab === id && 'bg-white text-blue-accent shadow-sm')}
+            className={cn('flex-1 rounded-[9px] border-0 bg-transparent py-2 text-[13px] font-semibold text-muted-foreground', tab === id && 'bg-white text-primary shadow-sm')}
             onClick={() => setTab(id)}
             aria-pressed={tab === id}
           >

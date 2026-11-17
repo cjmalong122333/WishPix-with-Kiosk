@@ -39,7 +39,7 @@ export function ChartCard({
           {subtitle && <p className="m-0 text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {table && !empty && (
-          <button className="no-print shrink-0 border-0 bg-transparent p-0 text-[13px] font-semibold text-blue-accent" onClick={() => setAsTable((v) => !v)} aria-pressed={asTable}>
+          <button className="no-print shrink-0 border-0 bg-transparent p-0 text-[13px] font-semibold text-primary" onClick={() => setAsTable((v) => !v)} aria-pressed={asTable}>
             {asTable ? t('Show chart') : t('Show table')}
           </button>
         )}
@@ -51,7 +51,7 @@ export function ChartCard({
       ) : (
         <>
           {legend && (
-            <ul className="m-0 mb-3 flex list-none flex-wrap gap-3 p-0 text-xs text-slate-600">
+            <ul className="m-0 mb-3 flex list-none flex-wrap gap-3 p-0 text-xs text-muted-foreground">
               {legend.map((s) => (
                 <li key={s.key} className="flex items-center gap-1.5">
                   <i className="size-2.5 rounded-sm" style={{ background: s.color }} />
@@ -88,7 +88,7 @@ export function ColumnChart({ rows, series, labelEvery = 1, height = 180 }: { ro
     <div>
       <div className="relative ml-7" style={{ height }}>
         {ticks.map((v) => (
-          <span key={v} className="absolute inset-x-0 border-t border-[#eef1f5]" style={{ bottom: `${(v / max) * 100}%` }}>
+          <span key={v} className="absolute inset-x-0 border-t border-border" style={{ bottom: `${(v / max) * 100}%` }}>
             <em className="absolute -top-2 -left-7 w-6 text-right text-[10px] text-muted-foreground not-italic">{v}</em>
           </span>
         ))}
@@ -109,7 +109,7 @@ export function ColumnChart({ rows, series, labelEvery = 1, height = 180 }: { ro
               {hover === i && (
                 <span
                   className={cn(
-                    'pointer-events-none absolute bottom-full z-10 mb-1 flex min-w-32 flex-col gap-0.5 rounded-lg bg-navy-900 px-2.5 py-2 text-left text-xs whitespace-nowrap text-white shadow-lg',
+                    'pointer-events-none absolute bottom-full z-10 mb-1 flex min-w-32 flex-col gap-0.5 rounded-lg bg-foreground px-2.5 py-2 text-left text-xs whitespace-nowrap text-white shadow-lg',
                     i > rows.length / 2 ? 'right-0' : 'left-0'
                   )}
                   role="presentation"
@@ -146,7 +146,7 @@ export function BarList({ rows, format = (v) => String(v) }: { rows: { label: st
     <ul className="m-0 grid list-none gap-2.5 p-0">
       {rows.map((r) => (
         <li key={r.label} title={`${r.label}: ${format(r.value)}`} className="grid gap-1">
-          <span className="truncate text-[13px] text-slate-700">{r.label}</span>
+          <span className="truncate text-[13px] text-foreground">{r.label}</span>
           <span className="flex items-center gap-2">
             <i className="block h-3 min-w-1 rounded" style={{ width: `${(r.value / max) * 85}%`, background: SERIES_COLORS[0] }} />
             <b className="text-xs">{format(r.value)}</b>

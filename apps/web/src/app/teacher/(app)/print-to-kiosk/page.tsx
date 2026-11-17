@@ -148,7 +148,7 @@ export default function PrintToKiosk() {
 
           {!file ? (
             <button
-              className="mt-3 flex w-full flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-[#b6c0cf] bg-[#fafbfd] px-6 py-10 text-center"
+              className="mt-3 flex w-full flex-col items-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-input bg-background px-6 py-10 text-center"
               onClick={() => input.current?.click()}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
@@ -163,8 +163,8 @@ export default function PrintToKiosk() {
             </button>
           ) : (
             <div className="mt-3 grid gap-4">
-              <div className="flex items-center gap-3 rounded-xl border bg-[#fafbfd] p-3">
-                {file.fileType === 'pdf' ? <FileText className="shrink-0 text-red-600" /> : <FileImage className="shrink-0 text-blue-600" />}
+              <div className="flex items-center gap-3 rounded-xl border bg-background p-3">
+                {file.fileType === 'pdf' ? <FileText className="shrink-0 text-red-600" /> : <FileImage className="shrink-0 text-primary" />}
                 <span className="min-w-0 flex-1">
                   <b className="block truncate text-sm">{file.fileName}</b>
                   <small className="text-muted-foreground">
@@ -177,7 +177,7 @@ export default function PrintToKiosk() {
               </div>
 
               <figure className="m-0">
-                <div className="grid min-h-48 place-items-center rounded-xl border bg-[repeating-conic-gradient(#f1f4f8_0_25%,#fff_0_50%)] bg-[length:16px_16px] p-3">
+                <div className="grid min-h-48 place-items-center rounded-xl border bg-[repeating-conic-gradient(#f3eefb_0_25%,#fff_0_50%)] bg-[length:16px_16px] p-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     key={`${file.upload}-${page}-${format}`}
@@ -303,7 +303,7 @@ function JobRow({ job, live, onAct }: { job: Job; live: { done: number; total: n
   return (
     <li className="rounded-xl border bg-card p-3">
       <div className="flex items-start gap-3">
-        {job.fileType === 'pdf' ? <FileText className="mt-0.5 shrink-0 text-red-600" size={20} /> : <FileImage className="mt-0.5 shrink-0 text-blue-600" size={20} />}
+        {job.fileType === 'pdf' ? <FileText className="mt-0.5 shrink-0 text-red-600" size={20} /> : <FileImage className="mt-0.5 shrink-0 text-primary" size={20} />}
         <span className="min-w-0 flex-1">
           <b className="block truncate text-sm">{job.fileName}</b>
           <small className="text-muted-foreground">
@@ -316,8 +316,8 @@ function JobRow({ job, live, onAct }: { job: Job; live: { done: number; total: n
         </Tag>
       </div>
       {job.status === 'printing' && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#e9eef5]">
-          <div className="h-full rounded-full bg-blue-accent transition-[width] duration-700" style={{ width: `${Math.max(5, (100 * done) / Math.max(1, job.sheetsTotal))}%` }} />
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-accent">
+          <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${Math.max(5, (100 * done) / Math.max(1, job.sheetsTotal))}%` }} />
         </div>
       )}
       {job.status === 'pending' && <p className="m-0 mt-2 text-[13px] text-muted-foreground">{t('Waiting until no child is using the kiosk.')}</p>}

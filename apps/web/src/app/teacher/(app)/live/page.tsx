@@ -155,7 +155,7 @@ function SessionFacts({ session }: { session: SessionView }) {
   return (
     <ul className="mt-3 flex list-none flex-wrap gap-2 p-0">
       {facts.map(([Icon, text], i) => (
-        <li key={i} className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-[13px] text-slate-600">
+        <li key={i} className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1 text-[13px] text-muted-foreground">
           <Icon size={14} /> {text}
         </li>
       ))}
@@ -172,7 +172,7 @@ function NowCard({ state, onWake }: { state: KioskState | null; onWake: () => vo
   return (
     <Hero>
       <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <span className="text-[11px] font-bold tracking-[0.08em] text-[#cfe0f5] uppercase">
+        <span className="text-[11px] font-bold tracking-[0.08em] text-white/80 uppercase">
           {t('Right now')} · {state?.kioskName ?? t('Kiosk')}
         </span>
         <OnlinePill online={state?.kioskOnline} onText={t('Online')} offText={t('Offline')} />
@@ -181,12 +181,12 @@ function NowCard({ state, onWake }: { state: KioskState | null; onWake: () => vo
         <div className="min-w-0 flex-1">
           <h2 className="mt-3.5 mb-1.5 text-[21px] font-extrabold">{status.title}</h2>
           {current?.recognizedText && [...FLOW_MODES, 'blocked', 'error'].includes(mode) ? (
-            <p className="m-0 text-sm text-[#d0dbe9]">
+            <p className="m-0 text-sm text-white/85">
               {current.queueNumber ? t('Child #{n} said', { n: current.queueNumber }) : t('The child said')} <b className="text-white">“{current.recognizedText}”</b>
               {current.override ? ` ${t('(overridden by teacher)')}` : ''}
             </p>
           ) : (
-            <p className="m-0 text-sm text-[#d0dbe9]">{status.text}</p>
+            <p className="m-0 text-sm text-white/85">{status.text}</p>
           )}
           {mode === 'preview' && current?.printProblem && (
             <p className="mt-2 rounded-lg bg-warning-bg/90 px-3 py-1.5 text-[13px] font-semibold text-amber-800">{t('Not printed: {problem}', { problem: t(current.printProblem) })}</p>
@@ -201,7 +201,7 @@ function NowCard({ state, onWake }: { state: KioskState | null; onWake: () => vo
           // eslint-disable-next-line @next/next/no-img-element
           <img className="size-24 shrink-0 rounded-xl bg-white object-cover" src={current.imageUrl} alt={current.recognizedText} />
         )}
-        {state?.screen?.sleeping && <Moon className="shrink-0 text-[#7cc4ff]" size={56} />}
+        {state?.screen?.sleeping && <Moon className="shrink-0 text-[#e5daf5]" size={56} />}
       </div>
       {showFlow && (
         <div className="mt-4 rounded-xl bg-white/8 px-2 py-3">
