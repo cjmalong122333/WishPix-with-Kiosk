@@ -44,7 +44,7 @@ export function StatsView({ data, printable }: { data: Stats; printable?: boolea
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 md:grid-cols-3">
         <Stat label={t('Requests')} value={s.requests} note={t(s.sessions === 1 ? 'In 1 session' : 'In {n} sessions', { n: s.sessions })} icon={<MessageSquare />} tone="blue" />
         <Stat label={t('Pictures made')} value={s.pictures} note={t('{p} of allowed requests', { p: percent(s.pictures, asked) })} icon={<ImageIcon />} tone="green" />
         <Stat label={t('Pages printed')} value={s.pages} note={t(s.reprints === 1 ? 'Including 1 reprint' : 'Including {n} reprints', { n: s.reprints })} icon={<Printer />} tone="purple" />
@@ -60,9 +60,9 @@ export function StatsView({ data, printable }: { data: Stats; printable?: boolea
         />
       </div>
 
-      <div className={cn('mt-4 grid gap-3', printable ? 'grid-cols-2' : 'lg:grid-cols-2')}>
+      <div className={cn('mt-4 grid gap-3', printable ? 'md:grid-cols-2 print:grid-cols-2' : 'lg:grid-cols-2')}>
         {days.length > 1 && (
-          <div className="lg:col-span-2">
+          <div className={cn(printable ? 'md:col-span-2 print:col-span-2' : 'lg:col-span-2')}>
             <ChartCard
               title={t('Requests per day')}
               subtitle={t('What happened to each request')}

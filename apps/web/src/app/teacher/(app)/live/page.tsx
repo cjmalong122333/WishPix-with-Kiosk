@@ -86,7 +86,7 @@ export default function LiveSession() {
 
       <NowCard state={state} onWake={() => act('/api/kiosk/wake', t('Waking the kiosk…'))} />
 
-      <div className="mt-3 flex gap-2.5">
+      <div className="mt-3 flex flex-wrap gap-2.5">
         {session?.status === 'paused' ? (
           <Button onClick={() => act('/api/sessions/current/resume', t('Session resumed.'))}>
             <Play fill="currentColor" /> {t('Resume')}
@@ -177,7 +177,7 @@ function NowCard({ state, onWake }: { state: KioskState | null; onWake: () => vo
         </span>
         <OnlinePill online={state?.kioskOnline} onText={t('Online')} offText={t('Offline')} />
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
           <h2 className="mt-3.5 mb-1.5 text-[21px] font-extrabold">{status.title}</h2>
           {current?.recognizedText && [...FLOW_MODES, 'blocked', 'error'].includes(mode) ? (
@@ -201,7 +201,7 @@ function NowCard({ state, onWake }: { state: KioskState | null; onWake: () => vo
           // eslint-disable-next-line @next/next/no-img-element
           <img className="size-24 shrink-0 rounded-xl bg-white object-cover" src={current.imageUrl} alt={current.recognizedText} />
         )}
-        {state?.screen?.sleeping && <Moon className="shrink-0 text-[#e5daf5]" size={56} />}
+        {state?.screen?.sleeping && <Moon className="hidden shrink-0 text-[#e5daf5] sm:block" size={56} />}
       </div>
       {showFlow && (
         <div className="mt-4 rounded-xl bg-white/8 px-2 py-3">

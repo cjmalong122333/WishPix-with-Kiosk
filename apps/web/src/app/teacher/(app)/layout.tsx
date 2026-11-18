@@ -76,8 +76,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside
         aria-label={t('Main menu')}
         className={cn(
-          'no-print fixed inset-y-0 left-0 z-30 flex w-[280px] flex-col overflow-y-auto border-r border-border bg-white px-4 pt-[22px] pb-4 text-foreground transition-transform duration-250',
-          'lg:sticky lg:top-0 lg:h-dvh lg:w-auto lg:translate-x-0',
+          'no-print fixed inset-y-0 left-0 z-30 flex w-[280px] max-w-[85vw] flex-col overflow-y-auto border-r border-border bg-white px-4 pt-[22px] pb-4 text-foreground transition-transform duration-250',
+          'lg:sticky lg:top-0 lg:h-dvh lg:w-auto lg:max-w-none lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -155,9 +155,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu size={24} />
             {firstAlert && <i className="absolute top-1 right-1.5 size-2.5 rounded-full border-2 border-white bg-danger" />}
           </button>
-          <span className="flex-1 text-xl font-extrabold text-foreground">
-            WishPix
-            <i className="ml-1 inline-block size-[7px] rounded-full bg-primary align-super" />
+          <span className="flex flex-1 items-center gap-2 text-xl font-extrabold text-foreground">
+            <span className="grid size-[30px] shrink-0 place-items-center rounded-[8px] bg-primary text-white lg:hidden">
+              <Star size={17} strokeWidth={2.1} />
+            </span>
+            <span>
+              WishPix
+              <i className="ml-1 inline-block size-[7px] rounded-full bg-primary align-super" />
+            </span>
           </span>
           <Link
             className="relative grid place-items-center rounded-lg p-1.5 text-foreground hover:text-primary"
@@ -172,7 +177,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {initials}
           </Link>
         </header>
-        <main className="mx-auto max-w-[760px] px-4 pt-[18px] pb-10 lg:max-w-[1100px] lg:px-8 lg:pt-7 lg:pb-12 print:max-w-none print:p-0">{children}</main>
+        <main className="mx-auto max-w-[760px] px-3.5 pt-[18px] pb-10 sm:px-6 md:max-w-[920px] lg:max-w-[1100px] lg:px-8 lg:pt-7 lg:pb-12 print:max-w-none print:p-0">{children}</main>
       </div>
     </div>
   );

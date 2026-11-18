@@ -186,7 +186,7 @@ export default function PrintToKiosk() {
                     className="max-h-[420px] max-w-full bg-white shadow-card"
                   />
                 </div>
-                <figcaption className="mt-2 flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
+                <figcaption className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-muted-foreground">
                   <span>{t('Preview: as it will print on {paper}.', { paper })}</span>
                   {file.pages > 1 && (
                     <span className="flex items-center gap-1">
@@ -258,7 +258,7 @@ export default function PrintToKiosk() {
                       onChange={(e) => setRange(e.target.value)}
                       placeholder={t('e.g. 1-3, 5')}
                       maxLength={60}
-                      className="h-8 w-40"
+                      className="h-8 w-full sm:w-40"
                       aria-label={t('Pages to print')}
                     />
                   </label>
@@ -302,7 +302,7 @@ function JobRow({ job, live, onAct }: { job: Job; live: { done: number; total: n
   const when = new Date(job.printedAt ?? job.createdAt).toLocaleString(t.locale, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   return (
     <li className="rounded-xl border bg-card p-3">
-      <div className="flex items-start gap-3">
+      <div className="flex flex-wrap items-start gap-3 sm:flex-nowrap">
         {job.fileType === 'pdf' ? <FileText className="mt-0.5 shrink-0 text-red-600" size={20} /> : <FileImage className="mt-0.5 shrink-0 text-primary" size={20} />}
         <span className="min-w-0 flex-1">
           <b className="block truncate text-sm">{job.fileName}</b>

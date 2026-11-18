@@ -85,7 +85,8 @@ export function ColumnChart({ rows, series, labelEvery = 1, height = 180 }: { ro
   const ticks = max <= 4 ? Array.from({ length: max + 1 }, (_, i) => i) : [0, max / 2, max];
 
   return (
-    <div>
+    <div className="overflow-x-auto pb-1">
+      <div className="min-w-[260px]">
       <div className="relative ml-7" style={{ height }}>
         {ticks.map((v) => (
           <span key={v} className="absolute inset-x-0 border-t border-border" style={{ bottom: `${(v / max) * 100}%` }}>
@@ -134,6 +135,7 @@ export function ColumnChart({ rows, series, labelEvery = 1, height = 180 }: { ro
             {i % labelEvery === 0 ? r.label : ''}
           </span>
         ))}
+      </div>
       </div>
     </div>
   );

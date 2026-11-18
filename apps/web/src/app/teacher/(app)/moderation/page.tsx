@@ -178,11 +178,11 @@ function ModCard({ item, busy, onReview }: { item: RequestItem; busy: boolean; o
       </div>
       {isPending ? (
         <>
-          <div className="flex gap-2.5">
-            <Button variant="outline" className="flex-1" onClick={() => onReview('keep')} disabled={busy}>
+          <div className="flex flex-wrap gap-2.5 sm:flex-nowrap">
+            <Button variant="outline" className="min-w-[120px] flex-1" onClick={() => onReview('keep')} disabled={busy}>
               <Ban /> {t('Keep Blocked')}
             </Button>
-            <Button className="flex-1" onClick={() => onReview('override')} disabled={busy}>
+            <Button className="min-w-[120px] flex-1" onClick={() => onReview('override')} disabled={busy}>
               <CircleCheck /> {t('Override')}
             </Button>
           </div>
@@ -237,7 +237,7 @@ function FilterTest({ session }: { session: SessionView | null }) {
       <p className="mt-0.5 mb-3 text-[13px] text-muted-foreground">
         {session ? t("Uses this session's {level} rules.", { level: t(SAFETY_NAMES[session.safety_level]) }) : t('Uses the STANDARD rules.')} {t('Nothing is sent to the kiosk.')}
       </p>
-      <form className="flex gap-2" onSubmit={check}>
+      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={check}>
         <Input
           value={text}
           onChange={(e) => {

@@ -11,7 +11,20 @@ const nunito = Nunito({ subsets: ['latin'], variable: '--font-nunito', display: 
 export const metadata: Metadata = {
   title: 'WishPix',
   description: 'Voice-to-picture learning kiosk for early childhood education centers.',
-  icons: { icon: '/favicon.svg' },
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'WishPix',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#7950d5' };

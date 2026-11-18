@@ -152,7 +152,7 @@ function SessionReport({ data, at, requestRows, madeAt }: { data: ReportData; at
           ))}
         </dl>
       </ChartCard>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t('Requests')} value={totals.requests} tone="blue" />
         <Stat label={t('Pictures made')} value={totals.pictures} tone="green" />
         <Stat label={t('Blocked')} value={totals.blocked} tone="red" />
@@ -172,14 +172,14 @@ function SafetyReport({ data, at }: { data: ReportData; at: At }) {
   const categories = data.categories.map((r) => ({ label: t(CATEGORY_NAMES[r.category] ?? r.category), value: r.n }));
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t('Requests')} value={s.requests} tone="blue" />
         <Stat label={t('Blocked')} value={s.blocked} note={t('{p} of all requests', { p: percent(s.blocked, s.requests) })} tone="red" />
         <Stat label={t('Kept blocked')} value={s.kept} note={t('{p} of reviewed', { p: percent(s.kept, reviewed) })} tone="gray" />
         <Stat label={t('Overridden')} value={s.overridden} note={t('Possible false alarms: {p}', { p: percent(s.overridden, reviewed) })} tone="green" />
       </div>
       {s.pending > 0 && <Warn>{t(s.pending === 1 ? '1 blocked request has not been reviewed yet.' : '{n} blocked requests have not been reviewed yet.', { n: s.pending })}</Warn>}
-      <div className="grid gap-3 lg:grid-cols-2 print:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 print:grid-cols-2">
         <ChartCard title={t('Why requests were blocked')} empty={!categories.length}>
           <BarList rows={categories} />
         </ChartCard>

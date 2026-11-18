@@ -126,7 +126,8 @@ html[data-theme='grape'] { --accent-color: #4b3a9e; --accent-soft: #e5e2f7; --pa
 html:has([data-kiosk]) {
   font-size: min(calc(100vw / 128), calc(100dvh / 80));
 }
-[data-kiosk] {
+[data-kiosk],
+[data-public-teacher] {
   --k-bg: #f8f6ff;
   --k-ink: #302344;
   --k-muted: #756b86;

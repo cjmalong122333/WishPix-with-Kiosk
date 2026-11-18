@@ -70,7 +70,7 @@ export function Stat({ label, value, note, icon, tone, small }: { label: string;
 }
 
 export function Stats({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn('grid grid-cols-2 gap-3 lg:grid-cols-4', className)}>{children}</div>;
+  return <div className={cn('grid grid-cols-1 min-[380px]:grid-cols-2 gap-3 lg:grid-cols-4', className)}>{children}</div>;
 }
 
 // A row of choices where exactly one is picked (date range, filters).
@@ -188,7 +188,7 @@ export function NoticeBar({ icon, text, href, link, warn }: { icon: React.ReactN
 
 // One row in a list of requests or events.
 export function Row({ children, className, href }: { children: React.ReactNode; className?: string; href?: string }) {
-  const cls = cn('flex items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-card', href && 'no-underline hover:border-primary/40', className);
+  const cls = cn('flex flex-wrap sm:flex-nowrap items-center gap-3 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-card', href && 'no-underline hover:border-primary/40', className);
   return href ? (
     <Link href={href} className={cls}>
       {children}

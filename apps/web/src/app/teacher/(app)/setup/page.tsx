@@ -151,10 +151,10 @@ export default function SessionSetup() {
 
         <ol className="mt-3.5 mb-4 flex list-none rounded-xl bg-accent p-1" aria-label={t('Steps')}>
           {steps.map((s, i) => (
-            <li key={s} className="min-w-0 flex-1">
+            <li key={s} className={cn('min-w-0', i === index ? 'flex-[1.6] sm:flex-1' : 'flex-1')}>
               <button
                 className={cn(
-                  'flex w-full items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent px-1 py-2 text-[13px] font-semibold text-muted-foreground disabled:cursor-default',
+                  'flex w-full items-center justify-center gap-1.5 rounded-[9px] border-0 bg-transparent px-1.5 py-2 text-[13px] font-semibold text-muted-foreground disabled:cursor-default sm:px-1',
                   i === index && 'bg-white text-primary shadow-sm',
                   i < index && 'text-muted-foreground'
                 )}
@@ -171,7 +171,7 @@ export default function SessionSetup() {
                 >
                   {i < index ? <Check size={12} strokeWidth={3} /> : i + 1}
                 </span>
-                <span className="truncate">{t(STEP_NAMES[s])}</span>
+                <span className={cn('truncate', i !== index && 'hidden sm:inline')}>{t(STEP_NAMES[s])}</span>
               </button>
             </li>
           ))}
@@ -228,7 +228,7 @@ export default function SessionSetup() {
 
         {at === 'theme' && (
           <Section title={t('Select Theme')} lead={t('Pick the learning topic. It is pushed to the kiosk when you start.')}>
-            <div className="grid grid-cols-2 gap-2.5 rounded-2xl border bg-card p-2.5 md:grid-cols-3">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2.5 rounded-2xl border bg-card p-2.5 md:grid-cols-3">
               {catalog?.themes.map((th) => {
                 const { icon: Icon, tone } = THEME_LOOK[th.id] ?? { icon: Layers, tone: 'gray' as const };
                 const selected = form.theme === th.name;
@@ -239,7 +239,7 @@ export default function SessionSetup() {
                     className={cn(
                       'relative flex min-w-0 flex-col gap-2.5 rounded-xl border bg-white p-3 text-left',
                       // The recommended theme keeps its accent and badge even when another is chosen.
-                      th.recommended && 'col-span-2 border-primary/40 bg-accent/50 ring-4 ring-primary/10 md:col-span-3',
+                      th.recommended && 'min-[420px]:col-span-2 border-primary/40 bg-accent/50 ring-4 ring-primary/10 md:col-span-3',
                       selected && 'border-2 border-primary p-[11px]'
                     )}
                     onClick={() => set({ theme: th.name })}
@@ -249,7 +249,7 @@ export default function SessionSetup() {
                         <Sparkles size={11} /> {t('Recommended')}
                       </span>
                     )}
-                    <span className="flex min-w-0 items-center gap-2 pr-24 text-sm font-bold break-words text-foreground">
+                    <span className={cn('flex min-w-0 items-center gap-2 text-sm font-bold break-words text-foreground', th.recommended && 'pr-24')}>
                       <Tint tone={tone} size="sm">
                         <Icon />
                       </Tint>
@@ -369,7 +369,7 @@ export default function SessionSetup() {
 
         {error && <ErrorText>{error}</ErrorText>}
 
-        <div className="sticky bottom-0 z-[5] -mx-4 mt-4 flex justify-between gap-3 border-t bg-white/95 px-4 py-3.5 backdrop-blur lg:mx-0 lg:rounded-xl lg:border">
+        <div className="sticky bottom-0 z-[5] -mx-3.5 mt-4 flex justify-between gap-3 border-t bg-white/95 px-3.5 py-3.5 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-xl lg:border lg:px-4">
           <Button variant="outline" onClick={() => go(steps[index - 1])} disabled={index === 0}>
             <ArrowLeft /> {t('Back')}
           </Button>

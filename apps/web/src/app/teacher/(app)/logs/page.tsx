@@ -100,12 +100,12 @@ function RequestLog({ range }: { range: Range }) {
   return (
     <>
       <div className="mt-3 flex flex-wrap gap-2">
-        <label className="relative min-w-[200px] flex-1">
+        <label className="relative min-w-[200px] flex-1 basis-full sm:basis-auto">
           <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
           <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t('Search what the children said')} aria-label={t('Search what the children said')} className="bg-card pl-9" />
         </label>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-40 bg-card" aria-label={t('Status')}>
+          <SelectTrigger className="flex-1 bg-card sm:w-40 sm:flex-initial" aria-label={t('Status')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -116,7 +116,7 @@ function RequestLog({ range }: { range: Range }) {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" asChild disabled={!total}>
+        <Button variant="outline" asChild disabled={!total} className="flex-1 sm:flex-initial">
           <a href={`/api/logs/requests/csv?${query}`} download className={cn(!total && 'pointer-events-none opacity-50')}>
             <Download /> {t('Download CSV')}
           </a>

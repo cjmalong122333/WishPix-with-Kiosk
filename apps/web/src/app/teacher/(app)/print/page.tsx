@@ -131,7 +131,7 @@ export default function PrintManagement() {
                   <img src={r.image_url ?? `/api/pages/${r.id}`} alt="" className="size-full object-cover" />
                   <Eye size={14} className="absolute right-[3px] bottom-[3px] box-content rounded bg-foreground/70 p-0.5 text-white" />
                 </button>
-                <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                <span className="flex min-w-[140px] flex-1 flex-col items-start gap-0.5">
                   <b className="max-w-full truncate text-[15px] text-foreground">“{r.recognized_text}”</b>
                   <small className="text-xs text-muted-foreground">
                     {t('Child #{n}', { n: r.queue_number })} · {themeName(r.theme, t)} · {when(r.created_at, t)}
@@ -143,6 +143,7 @@ export default function PrintManagement() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="ml-auto shrink-0"
                   disabled={busy}
                   onClick={() => act(`/api/print/${r.id}/reprint`, r.print_status === 'printed' ? t('Reprinting…') : t('Printing…'))}
                 >
@@ -217,11 +218,11 @@ function PrinterCard({ printer, printedToday, teacherToday, act }: { printer: Pr
   const waiting = printer.queue.length;
   return (
     <Panel className="mt-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Tint tone="purple" size="lg">
           <Printer />
         </Tint>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[160px] flex-1">
           <small className="block text-xs text-muted-foreground">
             {t('Kiosk printer')}
             {printer.printerName ? ` · ${printer.printerName}` : ''}
@@ -231,7 +232,7 @@ function PrinterCard({ printer, printedToday, teacherToday, act }: { printer: Pr
             {status.text}
           </b>
         </div>
-        <span className="text-right text-xs text-muted-foreground">
+        <span className="ml-auto text-right text-xs text-muted-foreground">
           <b className="block text-xl text-foreground">{printedToday ?? '–'}</b> {t('printed today')}
           {!!teacherToday && <small className="block">{t('+ {n} Teacher Print', { n: teacherToday })}</small>}
         </span>
@@ -293,7 +294,7 @@ function Gauge({ icon, label, value, percent, low }: { icon: React.ReactNode; la
   const t = useT();
   return (
     <div className="mt-4">
-      <div className="mb-1.5 flex justify-between text-[13px]">
+      <div className="mb-1.5 flex flex-wrap justify-between gap-1 text-[13px]">
         <span className="flex items-center gap-1.5 text-muted-foreground">
           {icon} {label}
         </span>

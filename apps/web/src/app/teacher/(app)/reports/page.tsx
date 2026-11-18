@@ -188,7 +188,7 @@ export default function Reports() {
 
 function Field({ label, id, children, wide }: { label: string; id: string; children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className={cn('grid gap-1.5', wide ? 'w-full' : 'w-48')}>
+    <div className={cn('grid gap-1.5', wide ? 'w-full' : 'w-full sm:w-48')}>
       <Label htmlFor={id}>{label}</Label>
       {children}
     </div>

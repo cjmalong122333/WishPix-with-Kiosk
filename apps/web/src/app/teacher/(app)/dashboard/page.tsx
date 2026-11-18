@@ -155,7 +155,7 @@ export default function Dashboard() {
         </span>
         <ChevronRight size={20} />
       </button>
-      <div className="mt-2.5 grid gap-2.5 lg:grid-cols-3">
+      <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {session?.status === 'paused' ? (
           <Action icon={<Play />} tone="green" title={t('Resume Session')} text={t('Let children make pictures again')} onClick={() => act('/api/sessions/current/resume', t('Session resumed.'))} />
         ) : (

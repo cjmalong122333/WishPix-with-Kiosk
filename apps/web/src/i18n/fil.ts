@@ -1096,6 +1096,17 @@ const fil: Record<string, string> = {
   "This PDF can't be opened. It may be damaged or have a password.": 'Hindi mabuksan ang PDF na ito. Baka sira ito o may password.',
   'This PDF has no pages.': 'Walang pahina ang PDF na ito.',
   "This picture can't be opened. It may be damaged or too large.": 'Hindi mabuksan ang larawang ito. Baka sira ito o masyadong malaki.',
+
+  // ---------- Teacher App install prompt ----------
+  'Download WishPix Teacher App': 'I-download ang WishPix Teacher App',
+  'Would you like to download the WishPix Teacher App for quick access on this device?':
+    'Gusto mo bang i-download ang WishPix Teacher App para madaling mabuksan sa device na ito?',
+  'Tap the Share button in your browser, then tap “Add to Home Screen”.':
+    'Pindutin ang Share button sa iyong browser, saka piliin ang “Add to Home Screen”.',
+  'Open your browser menu (⋮) and tap “Install app” or “Add to Home screen”.':
+    'Buksan ang menu ng iyong browser (⋮) at piliin ang “Install app” o “Add to Home screen”.',
+  'Not now': 'Hindi muna',
+  'Download app': 'I-download ang app',
 };
 
 export default fil;

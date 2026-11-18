@@ -232,10 +232,10 @@ function Toggle({ id, label, on, onChange }: { id: string; label: string; on: bo
 function MinuteChoice({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (m: number) => void }) {
   const t = useT();
   return (
-    <div className="mt-2 flex items-center justify-between gap-3">
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
       <Label className="text-sm font-medium">{label}</Label>
       <Select value={String(value)} onValueChange={(v) => onChange(Number(v))}>
-        <SelectTrigger className="w-36" aria-label={label}>
+        <SelectTrigger className="w-full sm:w-36" aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

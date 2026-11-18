@@ -20,11 +20,11 @@ export function Stepper({ mode, size = 'md' }: { mode?: string | null; size?: 'm
   const at = ORDER[mode ?? ''] ?? -1;
   const dot = size === 'md' ? 'size-10 text-base' : 'size-7 text-xs';
   return (
-    <ol className="m-0 flex list-none justify-center gap-2 p-0">
+    <ol className="m-0 flex list-none justify-center gap-1 p-0 sm:gap-2">
       {FLOW_STEPS.map((s, i) => {
         const state = i < at ? 'done' : i === at ? 'active' : 'todo';
         return (
-          <li key={s.id} className="relative flex max-w-36 flex-1 flex-col items-center gap-1.5">
+          <li key={s.id} className="relative flex min-w-0 max-w-36 flex-1 flex-col items-center gap-1.5">
             {i > 0 && (
               <span
                 aria-hidden
@@ -33,7 +33,7 @@ export function Stepper({ mode, size = 'md' }: { mode?: string | null; size?: 'm
                   size === 'md' ? 'top-5' : 'top-3.5',
                   state === 'todo' ? 'bg-white/30' : 'bg-white/90'
                 )}
-                style={{ left: 'calc(-50% + 24px)', right: 'calc(50% + 26px)' }}
+                style={{ left: 'calc(-50% + 18px)', right: 'calc(50% + 20px)' }}
               />
             )}
             <span
@@ -47,7 +47,7 @@ export function Stepper({ mode, size = 'md' }: { mode?: string | null; size?: 'm
             >
               {state === 'done' ? <Check className="size-1/2" strokeWidth={3} /> : i + 1}
             </span>
-            <span className={cn('font-semibold', size === 'md' ? 'text-[15px]' : 'text-xs', state === 'todo' ? 'text-white/75' : 'text-white')}>
+            <span className={cn('max-w-full truncate text-center font-semibold', size === 'md' ? 'text-xs sm:text-[15px]' : 'text-[11px] sm:text-xs', state === 'todo' ? 'text-white/75' : 'text-white')}>
               {t(s.label)}
             </span>
           </li>

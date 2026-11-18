@@ -59,9 +59,9 @@ export default function SystemCheck() {
 
   return (
     <WelcomeShell>
-      <section className="w-full max-w-[440px] rounded-[22px] border border-border bg-card p-6 text-left text-foreground shadow-card" aria-live="polite">
-                <p className="m-0 text-xs font-extrabold tracking-[0.12em] text-primary uppercase">{t('System check')}</p>
-        <h2 className="mt-3.5 mb-1 text-[28px] font-extrabold">{t('Getting ready...')}</h2>
+      <section className="w-full max-w-[440px] rounded-[22px] border border-border bg-card p-5 text-left text-foreground shadow-card sm:p-6" aria-live="polite">
+        <p className="m-0 text-xs font-extrabold tracking-[0.12em] text-primary uppercase">{t('System check')}</p>
+        <h2 className="mt-3 mb-1 text-2xl font-extrabold sm:mt-3.5 sm:text-[28px]">{t('Getting ready...')}</h2>
         <p className="mb-4 border-b border-border pb-4 text-sm text-muted-foreground">{t('Making sure everything is connected before starting')}</p>
         <ul className="m-0 grid list-none gap-[18px] p-0">
           {rows.map((r, i) => {

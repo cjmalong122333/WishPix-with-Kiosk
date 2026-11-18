@@ -92,7 +92,7 @@ export default function KioskManagement() {
         </div>
         <KioskName name={state?.kioskName ?? info?.name} onSave={(name) => act('/api/kiosk', t('Kiosk renamed.'), 'PATCH', { name })} />
         <p className="m-0 max-w-[460px] text-sm text-white/85">{status.text}</p>
-        <dl className="mt-4 grid grid-cols-3 gap-3">
+        <dl className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
           {[
             [info?.online ? t('Connected for') : t('Last seen'), info ? (info.online && connectedAt ? duration(now - connectedAt.getTime(), t) : when(info.lastSeen, t) || t('Never')) : '–'],
             [t('Screen'), state?.kioskOnline ? (sleeping ? t('Sleeping') : t('Awake')) : '–'],
@@ -169,8 +169,8 @@ export default function KioskManagement() {
 
       <SectionHead title={t('Screen')} />
       <Panel>
-        <div className="flex items-center gap-3">
-          <span className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
+          <span className="min-w-[180px] flex-1">
             <b className="block text-[15px]">{sleeping ? t('The screen is asleep') : t('The screen is awake')}</b>
             <small className="text-[13px] text-muted-foreground">
               {info?.autoSleep ? t('Sleeps by itself after {n} min with nobody using it.', { n: info.autoSleepMinutes }) : t('Auto-sleep is off.')}{' '}
@@ -196,7 +196,7 @@ export default function KioskManagement() {
       </Panel>
 
       <SectionHead title={t('Controls')} />
-      <div className="grid gap-2.5 lg:grid-cols-3">
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         <button
           className="flex items-center gap-3.5 rounded-xl border bg-card px-3.5 py-3 text-left shadow-card hover:bg-accent disabled:opacity-50"
           disabled={!state?.kioskOnline}
