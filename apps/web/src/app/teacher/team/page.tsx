@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { isStandaloneApp } from '@/components/teacher/install-prompt';
 import { PublicShell } from '@/components/teacher/public-shell';
 
 const PILLARS = [
@@ -24,6 +27,23 @@ const PILLARS = [
 ];
 
 export default function TeacherTeamPage() {
+  const router = useRouter();
+  const standalone = useSyncExternalStore(
+    () => () => {},
+    () => isStandaloneApp(window),
+    () => false
+  );
+
+  useEffect(() => {
+    if (standalone) {
+      router.replace('/teacher/login');
+    }
+  }, [standalone, router]);
+
+  if (standalone) {
+    return null;
+  }
+
   return (
     <PublicShell
       active="team"

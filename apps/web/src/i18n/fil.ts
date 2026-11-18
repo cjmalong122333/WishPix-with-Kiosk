@@ -1105,6 +1105,13 @@ const fil: Record<string, string> = {
     'Pindutin ang Share button sa iyong browser, saka piliin ang “Add to Home Screen”.',
   'Open your browser menu (⋮) and tap “Install app” or “Add to Home screen”.':
     'Buksan ang menu ng iyong browser (⋮) at piliin ang “Install app” o “Add to Home screen”.',
+  'Downloading WishPix-Teacher.apk… Open the downloaded file to install the app.':
+    'Dina-download ang WishPix-Teacher.apk… Buksan ang na-download na file para i-install ang app.',
+  'Downloading WishPix-Teacher-Setup.exe… Open the downloaded file to install the app.':
+    'Dina-download ang WishPix-Teacher-Setup.exe… Buksan ang na-download na file para i-install ang app.',
+  'Downloading WishPix-Teacher.mobileconfig… Open the downloaded profile in Settings to install the app.':
+    'Dina-download ang WishPix-Teacher.mobileconfig… Buksan ang na-download na profile sa Settings para i-install ang app.',
+  'Installer file:': 'Installer file:',
   'Not now': 'Hindi muna',
   'Download app': 'I-download ang app',
 };

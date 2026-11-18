@@ -1,27 +1,81 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Download, X } from 'lucide-react';
 import { useT } from '@/i18n';
 import { LogoMark } from '@/components/logo';
 
 export const INSTALL_DISMISS_KEY = 'wp_install_dismissed';
+export const INSTALLED_APP_SESSION_KEY = 'wp_installed_app';
 export const PHONE_TABLET_MEDIA_QUERY = '(max-width: 1024px)';
 export const STANDALONE_MEDIA_QUERY = '(display-mode: standalone)';
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+export type ClientPlatform = 'android' | 'ios' | 'windows';
+
+export function getDownloadHref(platform: ClientPlatform): string {
+  return `/api/teacher-app/download?platform=${platform}`;
 }
 
-export function isStandaloneApp(win: Window | undefined = typeof window !== 'undefined' ? window : undefined): boolean {
+export function detectClientPlatform(
+  win: Window | undefined = typeof window !== 'undefined' ? window : undefined
+): ClientPlatform {
+  if (!win) return 'android';
+  const ua = win.navigator?.userAgent || '';
+  const platform = win.navigator?.platform || '';
+  const maxTouchPoints = win.navigator?.maxTouchPoints || 0;
+
+  if (/iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1)) {
+    return 'ios';
+  }
+  if (/Android/i.test(ua)) {
+    return 'android';
+  }
+  if (isPhoneOrTabletSize(win)) {
+    return 'android';
+  }
+  if (/Win/i.test(platform) || /Windows/i.test(ua)) {
+    return 'windows';
+  }
+  return 'android';
+}
+
+export function isStandaloneApp(
+  win: Window | undefined = typeof window !== 'undefined' ? window : undefined
+): boolean {
   if (!win) return false;
   const standaloneMedia = win.matchMedia?.(STANDALONE_MEDIA_QUERY)?.matches ?? false;
   const iosStandalone = Boolean((win.navigator as Navigator & { standalone?: boolean })?.standalone);
-  return standaloneMedia || iosStandalone;
+  const ua = win.navigator?.userAgent || '';
+  const nativeWrapper = /WishPixTeacherApp/i.test(ua);
+
+  let queryApp = false;
+  try {
+    const search = win.location?.search || '';
+    if (search) {
+      const params = new URLSearchParams(search);
+      queryApp = params.get('app') === '1';
+    }
+  } catch {
+    // Ignore URL parsing errors
+  }
+
+  let sessionApp = false;
+  try {
+    if (standaloneMedia || iosStandalone || nativeWrapper || queryApp) {
+      win.sessionStorage?.setItem(INSTALLED_APP_SESSION_KEY, '1');
+      return true;
+    }
+    sessionApp = win.sessionStorage?.getItem(INSTALLED_APP_SESSION_KEY) === '1';
+  } catch {
+    // Ignore storage access errors
+  }
+
+  return standaloneMedia || iosStandalone || nativeWrapper || queryApp || sessionApp;
 }
 
-export function isPhoneOrTabletSize(win: Window | undefined = typeof window !== 'undefined' ? window : undefined): boolean {
+export function isPhoneOrTabletSize(
+  win: Window | undefined = typeof window !== 'undefined' ? window : undefined
+): boolean {
   if (!win) return false;
   if (typeof win.matchMedia === 'function') {
     return win.matchMedia(PHONE_TABLET_MEDIA_QUERY).matches;
@@ -37,68 +91,59 @@ export function shouldShowInstallPrompt(opts: {
   return opts.isMobileOrTablet && !opts.isStandalone && !opts.dismissed;
 }
 
+function subscribeWindowMedia(onStoreChange: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  const sizeMql = window.matchMedia(PHONE_TABLET_MEDIA_QUERY);
+  const standaloneMql = window.matchMedia(STANDALONE_MEDIA_QUERY);
+  sizeMql.addEventListener?.('change', onStoreChange);
+  standaloneMql.addEventListener?.('change', onStoreChange);
+  window.addEventListener('resize', onStoreChange);
+  window.addEventListener('appinstalled', onStoreChange);
+  return () => {
+    sizeMql.removeEventListener?.('change', onStoreChange);
+    standaloneMql.removeEventListener?.('change', onStoreChange);
+    window.removeEventListener('resize', onStoreChange);
+    window.removeEventListener('appinstalled', onStoreChange);
+  };
+}
+
 export function InstallAppPrompt() {
   const t = useT();
-  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const isMobileOrTablet = useSyncExternalStore(
+    subscribeWindowMedia,
+    () => isPhoneOrTabletSize(window),
+    () => false
+  );
+  const isStandalone = useSyncExternalStore(
+    subscribeWindowMedia,
+    () => isStandaloneApp(window),
+    () => false
+  );
+  const platform = useSyncExternalStore(
+    subscribeWindowMedia,
+    () => detectClientPlatform(window),
+    (): ClientPlatform => 'android'
+  );
+  const storedDismissed = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return sessionStorage.getItem(INSTALL_DISMISS_KEY) === '1';
+      } catch {
+        return false;
+      }
+    },
+    () => false
+  );
+
+  const [manualDismissed, setManualDismissed] = useState(false);
+  const [downloadedPlatform, setDownloadedPlatform] = useState<ClientPlatform | null>(null);
+  const dismissed = storedDismissed || manualDismissed;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if ('serviceWorker' in navigator) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
-
-    const ua = window.navigator.userAgent || '';
-    const iosDevice = /iPad|iPhone|iPod/.test(ua) || (window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
-    setIsIos(iosDevice);
-
-    try {
-      if (sessionStorage.getItem(INSTALL_DISMISS_KEY) === '1') {
-        setDismissed(true);
-      }
-    } catch {
-      // Ignore storage access errors
-    }
-
-    const sizeMql = window.matchMedia(PHONE_TABLET_MEDIA_QUERY);
-    const standaloneMql = window.matchMedia(STANDALONE_MEDIA_QUERY);
-
-    const updateDeviceState = () => {
-      setIsMobileOrTablet(isPhoneOrTabletSize(window));
-      setIsStandalone(isStandaloneApp(window));
-    };
-
-    updateDeviceState();
-
-    sizeMql.addEventListener?.('change', updateDeviceState);
-    standaloneMql.addEventListener?.('change', updateDeviceState);
-    window.addEventListener('resize', updateDeviceState);
-
-    const onBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-
-    const onAppInstalled = () => {
-      setDeferredPrompt(null);
-      setIsStandalone(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-    window.addEventListener('appinstalled', onAppInstalled);
-
-    return () => {
-      sizeMql.removeEventListener?.('change', updateDeviceState);
-      standaloneMql.removeEventListener?.('change', updateDeviceState);
-      window.removeEventListener('resize', updateDeviceState);
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', onAppInstalled);
-    };
   }, []);
 
   if (!shouldShowInstallPrompt({ isMobileOrTablet, isStandalone, dismissed })) {
@@ -106,7 +151,7 @@ export function InstallAppPrompt() {
   }
 
   function handleDismiss() {
-    setDismissed(true);
+    setManualDismissed(true);
     try {
       sessionStorage.setItem(INSTALL_DISMISS_KEY, '1');
     } catch {
@@ -114,21 +159,14 @@ export function InstallAppPrompt() {
     }
   }
 
-  async function handleDownload() {
-    if (deferredPrompt) {
-      try {
-        await deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
-          setDeferredPrompt(null);
-          setDismissed(true);
-        }
-      } catch {
-        setShowInstructions(true);
-      }
-      return;
-    }
-    setShowInstructions(true);
+  function triggerInstallerDownload(targetPlatform: ClientPlatform) {
+    setDownloadedPlatform(targetPlatform);
+    const link = document.createElement('a');
+    link.href = getDownloadHref(targetPlatform);
+    link.setAttribute('download', '');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   return (
@@ -159,13 +197,46 @@ export function InstallAppPrompt() {
         </div>
       </div>
 
-      {showInstructions && (
-        <p className="mt-[12px] mb-0 rounded-[12px] bg-[#eee6fc] px-[12px] py-[10px] text-[13px] leading-[1.4] font-semibold text-[#7950d5]">
-          {isIos
-            ? t('Tap the Share button in your browser, then tap “Add to Home Screen”.')
-            : t('Open your browser menu (⋮) and tap “Install app” or “Add to Home screen”.')}
+      {downloadedPlatform && (
+        <p
+          role="status"
+          className="mt-[12px] mb-0 rounded-[12px] bg-[#eee6fc] px-[12px] py-[10px] text-[13px] leading-[1.4] font-semibold text-[#7950d5]"
+        >
+          {downloadedPlatform === 'ios'
+            ? t('Downloading WishPix-Teacher.mobileconfig… Open the downloaded profile in Settings to install the app.')
+            : downloadedPlatform === 'windows'
+              ? t('Downloading WishPix-Teacher-Setup.exe… Open the downloaded file to install the app.')
+              : t('Downloading WishPix-Teacher.apk… Open the downloaded file to install the app.')}
         </p>
       )}
+
+      <div className="mt-[12px] flex flex-wrap items-center gap-[6px] text-[12px] font-bold text-[#756b86]">
+        <span>{t('Installer file:')}</span>
+        <a
+          href={getDownloadHref('android')}
+          download="WishPix-Teacher.apk"
+          onClick={() => setDownloadedPlatform('android')}
+          className="rounded-full bg-[#f8f6ff] px-[10px] py-[3px] text-[#7950d5] no-underline hover:bg-[#eee6fc]"
+        >
+          Android (.apk)
+        </a>
+        <a
+          href={getDownloadHref('windows')}
+          download="WishPix-Teacher-Setup.exe"
+          onClick={() => setDownloadedPlatform('windows')}
+          className="rounded-full bg-[#f8f6ff] px-[10px] py-[3px] text-[#7950d5] no-underline hover:bg-[#eee6fc]"
+        >
+          Windows (.exe)
+        </a>
+        <a
+          href={getDownloadHref('ios')}
+          download="WishPix-Teacher.mobileconfig"
+          onClick={() => setDownloadedPlatform('ios')}
+          className="rounded-full bg-[#f8f6ff] px-[10px] py-[3px] text-[#7950d5] no-underline hover:bg-[#eee6fc]"
+        >
+          iOS (.mobileconfig)
+        </a>
+      </div>
 
       <div className="mt-[14px] flex items-center justify-end gap-[8px]">
         <button
@@ -177,7 +248,7 @@ export function InstallAppPrompt() {
         </button>
         <button
           type="button"
-          onClick={() => void handleDownload()}
+          onClick={() => triggerInstallerDownload(platform)}
           className="inline-flex h-[38px] items-center gap-[6px] rounded-full border-0 bg-[#7950d5] px-[18px] text-[13px] font-extrabold text-white transition-opacity hover:opacity-95"
         >
           <Download size={15} />

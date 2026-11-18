@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { isStandaloneApp } from '@/components/teacher/install-prompt';
 import { PublicShell, WavingPixi } from '@/components/teacher/public-shell';
 
 const FLOW_STEPS = [
@@ -22,6 +25,23 @@ const FLOW_STEPS = [
 const reveal = (seconds: number) => ({ animationDelay: `${seconds}s` });
 
 export default function TeacherAboutPage() {
+  const router = useRouter();
+  const standalone = useSyncExternalStore(
+    () => () => {},
+    () => isStandaloneApp(window),
+    () => false
+  );
+
+  useEffect(() => {
+    if (standalone) {
+      router.replace('/teacher/login');
+    }
+  }, [standalone, router]);
+
+  if (standalone) {
+    return null;
+  }
+
   return (
     <PublicShell
       active="about"
